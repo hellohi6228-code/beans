@@ -1,4 +1,10 @@
 export type SupplierType = 'farmer' | 'bulk' | 'online_retail' | 'coffee_shop';
+
+/**
+ * Whether an account also sells. Everyone buys — a farmer can buy from another
+ * farmer, a coffee shop from a bulk seller — so `supplier` only means "this
+ * account can publish listings too".
+ */
 export type Role = 'customer' | 'supplier';
 
 export const SUPPLIER_LABEL: Record<SupplierType, string> = {
@@ -36,6 +42,11 @@ export type Post = {
   photos: string[];
   caption: string;
   kind: 'merchandise' | 'event' | 'update';
+  /**
+   * Something they sell, or an event they host — the post carries a chat button
+   * so anyone looking at it can ask about it directly.
+   */
+  contactable: boolean;
   createdAt: number;
 };
 
@@ -83,14 +94,19 @@ export type Message = {
   text?: string;
   /** An order card pinned into the conversation. */
   orderId?: string;
+  /** A post the conversation was started from. */
+  postId?: string;
   system?: boolean;
   createdAt: number;
 };
 
+/**
+ * A direct message thread between any two accounts. Anyone can buy from anyone,
+ * so a thread is not buyer-and-seller — it is just two people.
+ */
 export type Thread = {
   id: string;
-  customerId: string;
-  supplierId: string;
+  participants: string[];
   createdAt: number;
   lastAt: number;
 };

@@ -25,7 +25,7 @@ export default function Messages() {
 
   return (
     <>
-      <Header title="Messages" subtitle="Every order starts as a conversation" />
+      <Header title="Messages" subtitle="Orders, posts, and everything else" />
 
       <ScrollView
         contentContainerStyle={{ paddingHorizontal: space.lg, paddingBottom: insets.bottom + 120, gap: space.sm }}
@@ -44,7 +44,7 @@ export default function Messages() {
           </Card>
         ) : (
           threads.map((t) => {
-            const otherId = t.customerId === me.id ? t.supplierId : t.customerId;
+            const otherId = t.participants.find((p) => p !== me.id) ?? t.participants[0];
             const other = userById(otherId);
             const msgs = messagesOf(t.id);
             const last = msgs[msgs.length - 1];
@@ -62,7 +62,11 @@ export default function Messages() {
                       </T>
                     </Row>
                     <T size={13} color={theme.muted} numberOfLines={1}>
-                      {last?.orderId ? 'Order enquiry' : (last?.text ?? 'Say hello')}
+                      {last?.orderId
+                        ? 'Order enquiry'
+                        : last?.postId
+                          ? 'Asked about a post'
+                          : (last?.text ?? 'Say hello')}
                     </T>
                   </View>
                 </Row>

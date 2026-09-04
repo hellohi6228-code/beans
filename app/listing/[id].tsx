@@ -55,7 +55,9 @@ export default function ListingDetail() {
   const parsed = parseFloat(qty.replace(',', '.'));
   const qtyKg = isFinite(parsed) && parsed > 0 ? toKg(parsed, unit) : 0;
   const overLot = qtyKg > listing.lotKg + 1e-9;
-  const canOrder = me?.role === 'customer' && qtyKg > 0 && !overLot;
+  // Anyone can buy — the only person who cannot is whoever posted the listing.
+  const isMine = me?.id === listing.supplierId;
+  const canOrder = !!me && !isMine && qtyKg > 0 && !overLot;
   const total = listing.pricePerKg * qtyKg;
 
   const order = () => {
@@ -167,7 +169,7 @@ export default function ListingDetail() {
         </Card>
 
         {/* Order */}
-        {me?.role === 'customer' ? (
+        {me && !isMine ? (
           <Card style={{ gap: space.md }}>
             <Label>How much do you want</Label>
             <Row style={{ gap: space.sm, alignItems: 'flex-end' }}>
@@ -209,6 +211,15 @@ export default function ListingDetail() {
             <Btn title="Order — opens a chat with the supplier" onPress={order} disabled={!canOrder} />
             <T size={12} color={theme.muted} style={{ textAlign: 'center' }}>
               Beans does not take payment. You and the supplier settle up however you both prefer.
+            </T>
+          </Card>
+        ) : isMine ? (
+          <Card style={{ padding: space.md }}>
+            <T size={14} weight="700">
+              This is your own listing
+            </T>
+            <T size={12.5} color={theme.muted}>
+              This is how buyers see it.
             </T>
           </Card>
         ) : null}

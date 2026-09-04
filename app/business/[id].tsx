@@ -1,9 +1,10 @@
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useState } from 'react';
-import { Dimensions, Pressable, ScrollView, View } from 'react-native';
+import { Dimensions, ScrollView, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Header } from '../../src/components/Header';
 import { ListingCard } from '../../src/components/ListingCard';
+import { PostTile } from '../../src/components/PostTile';
 import { Avatar, Btn, Card, Chip, Empty, Photo, Row, Segmented, Stars, Sub, T } from '../../src/components/ui';
 import { useStore } from '../../src/store';
 import { space, theme } from '../../src/theme';
@@ -25,6 +26,7 @@ export default function BusinessProfile() {
     reviewsOfSupplier,
     ratingOf,
     badgesFor,
+    openThread,
     me,
     state,
     signIn,
@@ -42,12 +44,14 @@ export default function BusinessProfile() {
     ? reviewsOfSupplier(user.id)
     : state.reviews.filter((r) => r.customerId === user.id);
   const rating = ratingOf(user.id);
-  const badges = !isSupplier ? badgesFor(user.id).filter((b) => b.earned) : [];
+  // Everyone buys, so everyone collects badges.
+  const badges = badgesFor(user.id).filter((b) => b.earned);
   const mine = me?.id === user.id;
 
-  const existingThread = state.threads.find(
-    (t) => (t.customerId === me?.id && t.supplierId === user.id) || (t.supplierId === me?.id && t.customerId === user.id)
-  );
+  const message = (postId?: string) => {
+    const threadId = openThread(user.id, postId);
+    router.push(`/chat/${threadId}`);
+  };
 
   const tabs: { value: Tab; label: string }[] = isSupplier
     ? [
@@ -95,7 +99,7 @@ export default function BusinessProfile() {
 
           {user.bio ? <Sub>{user.bio}</Sub> : null}
 
-          {!isSupplier && badges.length ? (
+          {badges.length ? (
             <Row style={{ gap: 6, flexWrap: 'wrap' }}>
               {badges.slice(0, 8).map((b) => (
                 <Chip key={b.badge.id} label={`${b.badge.glyph} ${b.badge.name}`} tone="gold" />
@@ -108,13 +112,8 @@ export default function BusinessProfile() {
               <Btn title="Edit profile" kind="ghost" onPress={() => router.push('/edit-profile')} style={{ flex: 1 }} />
               <Btn title="New post" kind="soft" onPress={() => router.push('/new-post')} style={{ flex: 1 }} />
             </Row>
-          ) : me && isSupplier && me.role === 'customer' ? (
-            <Btn
-              title="Message this supplier"
-              kind="soft"
-              onPress={() => existingThread && router.push(`/chat/${existingThread.id}`)}
-              disabled={!existingThread}
-            />
+          ) : me ? (
+            <Btn title="Message" kind="soft" onPress={() => message()} />
           ) : null}
 
           {!me ? <Btn title="Sign in to order" kind="soft" onPress={() => signIn(user.id)} /> : null}
@@ -134,15 +133,7 @@ export default function BusinessProfile() {
           ) : (
             <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: space.xs }}>
               {posts.map((p) => (
-                <Pressable key={p.id} onPress={() => router.push(`/post/${p.id}`)}>
-                  <Photo
-                    uri={p.photos[0]}
-                    seed={p.id}
-                    glyph={p.kind === 'event' ? '📅' : p.kind === 'merchandise' ? '🛍️' : '📷'}
-                    style={{ width: TILE, height: TILE }}
-                    radius={10}
-                  />
-                </Pressable>
+                <PostTile key={p.id} post={p} size={TILE} />
               ))}
             </View>
           )

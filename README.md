@@ -6,6 +6,10 @@ Suppliers list what they have, at the price they will actually charge. Buyers sa
 coffee they need, browse what matches, and open a chat to arrange the order. Beans never
 touches the money.
 
+Everyone is a buyer. A farmer can buy from another farmer, a coffee shop from a bulk
+importer, a home roaster from any of them. Listing beans is an extra tab on your account, not
+a different kind of account.
+
 ## Running it
 
 ```bash
@@ -35,9 +39,10 @@ app/                     screens (expo-router, file-based)
   welcome.tsx            pick or create an account
   signup.tsx             account setup, incl. supplier type
   (tabs)/
-    home.tsx             buyer: the sourcing box | supplier: listings dashboard
-    messages.tsx         conversations
-    collection.tsx       badges + order history (buyers only)
+    home.tsx             the sourcing box — the front page for everyone
+    listings.tsx         the selling side; only shown to accounts that sell
+    messages.tsx         DM inbox
+    collection.tsx       badges + order history
     profile.tsx          your own profile
   results.tsx            listings that match the request
   listing/[id].tsx       listing detail + order + report
@@ -56,15 +61,16 @@ src/
   badges.ts              the badge catalogue and how each one is earned
   units.ts               kg/lb conversion and the dual-unit formatters
   theme.ts               colours, spacing, the background gradient
-  components/            Photo, PhotoPicker, ListingCard, Header, ui kit
+  components/            Photo, PhotoPicker, PostTile, ListingCard, Header, ui kit
   data/photos.ts         offline placeholder images for the sample content
 ```
 
-### Buyer front page
+### The front page
 
-The first screen is deliberately one question: how much coffee, in kg or lb, and is shipping
-included. Tick shipping and a single address box appears (US addresses). That is the whole
-form — results come next.
+The first screen — for every account, whether or not it also sells — is deliberately one
+question: how much coffee, in kg or lb, and is shipping included. Tick shipping and a single
+address box appears (US addresses). That is the whole form; results come next. Your own
+listings are filtered out of your own results.
 
 ### kg and lb, everywhere
 
@@ -77,24 +83,36 @@ unit they use; `src/units.ts` converts once and both figures are displayed from 
 Farmer, bulk seller, online retail, and coffee shop. The type shows on the business profile
 and next to every listing.
 
-### Profiles
+### Profiles and posts
 
-Suppliers and buyers get the same Instagram-shaped profile: picture, name, handle, location,
-a free-form bio, and a grid of posts tagged as an update, merchandise, or an event. Supplier
-profiles add a Listings tab and a Reviews tab.
+Everyone gets the same Instagram-shaped profile: picture, name, handle, location, a free-form
+bio, and a grid of posts tagged as an update, merchandise, or an event. Accounts that sell add
+a Listings tab and a Reviews tab.
+
+Posting asks one extra question: is this something you sell, or an event you host? Say yes and
+the picture carries a chat button in its top-left corner, on the grid and on the post itself.
+Tapping it opens a DM with that post pinned at the top, so the other side knows what the
+message is about.
+
+### Messages
+
+Plain Instagram-style DMs between any two accounts, with full history. An order or a post
+question drops a card into the same thread rather than starting a new one, so everything you
+have ever discussed with someone stays in one conversation.
 
 ### Orders
 
 Ordering does not check out. It pins an order card — quantity in both units, locked price,
-shipping status, total — into a chat with the supplier, and the two of you settle payment
-however you like.
+shipping status, total — into the chat with the supplier, and the two of you settle payment
+however you like. The only listing you cannot order is your own.
 
 ### Badges
 
 Fourteen badges across four groups: volume of orders, reviews written, kinds of supplier
 bought from, and origins collected. Locked badges show their progress bar, so the next one is
 always visible. `src/badges.ts` holds the catalogue; each badge computes its own progress from
-the buyer's orders and reviews.
+that account's orders and reviews. Since everyone buys, everyone collects them — a roaster
+that also sells has a collection too.
 
 ### Price discrepancy reports
 

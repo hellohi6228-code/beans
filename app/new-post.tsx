@@ -3,7 +3,7 @@ import React, { useState } from 'react';
 import { KeyboardAvoidingView, Platform, ScrollView, View } from 'react-native';
 import { Header } from '../src/components/Header';
 import { PhotoPicker } from '../src/components/PhotoPicker';
-import { Btn, Card, Field, Label, Row, Segmented } from '../src/components/ui';
+import { Btn, Card, Checkbox, Field, Label, Row, Segmented } from '../src/components/ui';
 import { useStore } from '../src/store';
 import { space } from '../src/theme';
 import { Post } from '../src/types';
@@ -15,11 +15,18 @@ export default function NewPost() {
   const [photos, setPhotos] = useState<string[]>([]);
   const [caption, setCaption] = useState('');
   const [kind, setKind] = useState<Post['kind']>('update');
+  const [contactable, setContactable] = useState(false);
 
   const ready = photos.length >= 1 || caption.trim().length > 2;
 
+  // Picking Merch or Event answers the question already; keep them in step.
+  const pickKind = (k: Post['kind']) => {
+    setKind(k);
+    setContactable(k !== 'update');
+  };
+
   const submit = () => {
-    addPost({ photos, caption: caption.trim(), kind });
+    addPost({ photos, caption: caption.trim(), kind, contactable });
     router.back();
   };
 
@@ -40,7 +47,7 @@ export default function NewPost() {
             <Label>What is this</Label>
             <Segmented
               value={kind}
-              onChange={setKind}
+              onChange={pickKind}
               options={[
                 { value: 'update', label: 'Update' },
                 { value: 'merchandise', label: 'Merch' },
@@ -48,6 +55,13 @@ export default function NewPost() {
               ]}
             />
           </View>
+
+          <Checkbox
+            checked={contactable}
+            onToggle={() => setContactable((v) => !v)}
+            label="Is this something you sell, or an event you host?"
+            sublabel="If it is, the picture gets a chat button so people can message you about it."
+          />
 
           <Field
             label="Caption"

@@ -13,7 +13,7 @@ import {
 import { Listing, Message, Order, Post, Report, Review, Role, Thread, User } from './types';
 import { Unit } from './units';
 
-const KEY = 'beans.state.v1';
+const KEY = 'beans.state.v2';
 
 /** What the customer types on the front page: how much, and where it is going. */
 export type SourcingRequest = {
@@ -81,6 +81,10 @@ type Ctx = {
   addListing: (input: Omit<Listing, 'id' | 'createdAt' | 'supplierId' | 'active'>) => Listing;
   removeListing: (id: string) => void;
   addPost: (input: Omit<Post, 'id' | 'createdAt' | 'userId'>) => Post;
+
+  /** Finds the DM thread with someone, or starts one. Optionally pins a post into it. */
+  openThread: (otherUserId: string, aboutPostId?: string) => string;
+  threadWith: (otherUserId: string) => Thread | undefined;
 
   /** Opens (or reuses) the chat with the supplier and pins an order card into it. */
   startOrder: (listingId: string, qtyKg: number) => { threadId: string; orderId: string };
@@ -169,9 +173,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     ordersOfCustomer: (customerId) =>
       state.orders.filter((o) => o.customerId === customerId).sort((a, b) => b.createdAt - a.createdAt),
     threadsOf: (userId) =>
-      state.threads
-        .filter((t) => t.customerId === userId || t.supplierId === userId)
-        .sort((a, b) => b.lastAt - a.lastAt),
+      state.threads.filter((t) => t.participants.includes(userId)).sort((a, b) => b.lastAt - a.lastAt),
     messagesOf: (threadId) =>
       state.messages.filter((m) => m.threadId === threadId).sort((a, b) => a.createdAt - b.createdAt),
     reportsAgainst: (supplierId) => state.reports.filter((r) => r.supplierId === supplierId),
@@ -197,10 +199,46 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       return post;
     },
 
+    openThread: (otherUserId, aboutPostId) => {
+      const me_ = state.sessionUserId!;
+      const existing = state.threads.find(
+        (t) => t.participants.includes(me_) && t.participants.includes(otherUserId)
+      );
+      const threadId = existing?.id ?? uid('th');
+      const now = Date.now();
+
+      // Pin the post that prompted the message, so the other side has context.
+      const alreadyPinned =
+        aboutPostId && state.messages.some((m) => m.threadId === threadId && m.postId === aboutPostId);
+      const card: Message | null =
+        aboutPostId && !alreadyPinned
+          ? { id: uid('m'), threadId, senderId: me_, postId: aboutPostId, system: true, createdAt: now }
+          : null;
+
+      if (!existing || card) {
+        setState((s) => ({
+          ...s,
+          threads: existing
+            ? s.threads.map((t) => (t.id === threadId ? { ...t, lastAt: now } : t))
+            : [{ id: threadId, participants: [me_, otherUserId], createdAt: now, lastAt: now }, ...s.threads],
+          messages: card ? [...s.messages, card] : s.messages,
+        }));
+      }
+
+      return threadId;
+    },
+
+    threadWith: (otherUserId) =>
+      state.threads.find(
+        (t) => t.participants.includes(state.sessionUserId ?? '') && t.participants.includes(otherUserId)
+      ),
+
     startOrder: (listingId, qtyKg) => {
       const listing = state.listings.find((l) => l.id === listingId)!;
       const customerId = state.sessionUserId!;
-      const existing = state.threads.find((t) => t.customerId === customerId && t.supplierId === listing.supplierId);
+      const existing = state.threads.find(
+        (t) => t.participants.includes(customerId) && t.participants.includes(listing.supplierId)
+      );
       const threadId = existing?.id ?? uid('th');
       const now = Date.now();
       const order: Order = {
@@ -223,7 +261,10 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
         orders: [order, ...s.orders],
         threads: existing
           ? s.threads.map((t) => (t.id === threadId ? { ...t, lastAt: now } : t))
-          : [{ id: threadId, customerId, supplierId: listing.supplierId, createdAt: now, lastAt: now }, ...s.threads],
+          : [
+              { id: threadId, participants: [customerId, listing.supplierId], createdAt: now, lastAt: now },
+              ...s.threads,
+            ],
         messages: [...s.messages, card],
       }));
 

@@ -10,7 +10,8 @@ const Icon = ({ glyph, focused }: { glyph: string; focused: boolean }) => (
 
 export default function TabsLayout() {
   const { me } = useStore();
-  const isSupplier = me?.role === 'supplier';
+  // Everyone buys. Selling is the extra tab, not a different app.
+  const sells = me?.role === 'supplier';
 
   return (
     <Tabs
@@ -30,8 +31,16 @@ export default function TabsLayout() {
       <Tabs.Screen
         name="home"
         options={{
-          title: isSupplier ? 'Listings' : 'Find beans',
-          tabBarIcon: ({ focused }) => <Icon glyph={isSupplier ? '🫘' : '🔍'} focused={focused} />,
+          title: 'Find beans',
+          tabBarIcon: ({ focused }) => <Icon glyph="🔍" focused={focused} />,
+        }}
+      />
+      <Tabs.Screen
+        name="listings"
+        options={{
+          title: 'Selling',
+          href: sells ? undefined : null,
+          tabBarIcon: ({ focused }) => <Icon glyph="🫘" focused={focused} />,
         }}
       />
       <Tabs.Screen
@@ -45,7 +54,6 @@ export default function TabsLayout() {
         name="collection"
         options={{
           title: 'Collection',
-          href: isSupplier ? null : undefined,
           tabBarIcon: ({ focused }) => <Icon glyph="🏅" focused={focused} />,
         }}
       />

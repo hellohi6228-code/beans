@@ -1,9 +1,10 @@
 import { useRouter } from 'expo-router';
 import React from 'react';
-import { Dimensions, Pressable, ScrollView, View } from 'react-native';
+import { Dimensions, ScrollView, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Header } from '../../src/components/Header';
-import { Avatar, Btn, Card, Chip, Empty, Label, Photo, Row, Stars, Sub, T } from '../../src/components/ui';
+import { PostTile } from '../../src/components/PostTile';
+import { Avatar, Btn, Card, Chip, Empty, Label, Row, Stars, Sub, T } from '../../src/components/ui';
 import { useStore } from '../../src/store';
 import { space, theme } from '../../src/theme';
 import { SUPPLIER_LABEL } from '../../src/types';
@@ -22,7 +23,8 @@ export default function Profile() {
   const listings = isSupplier ? listingsOf(me.id) : [];
   const rating = ratingOf(me.id);
   const reports = isSupplier ? reportsAgainst(me.id) : [];
-  const earned = !isSupplier ? badgesFor(me.id).filter((b) => b.earned) : [];
+  // Everyone buys, so everyone has a badge collection.
+  const earned = badgesFor(me.id).filter((b) => b.earned);
 
   return (
     <>
@@ -76,7 +78,7 @@ export default function Profile() {
           </Row>
         </Card>
 
-        {!isSupplier && earned.length ? (
+        {earned.length ? (
           <Card style={{ gap: space.sm }}>
             <Label>Badges</Label>
             <Row style={{ gap: 6, flexWrap: 'wrap' }}>
@@ -141,15 +143,7 @@ export default function Profile() {
         ) : (
           <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: space.xs }}>
             {posts.map((p) => (
-              <Pressable key={p.id} onPress={() => router.push(`/post/${p.id}`)}>
-                <Photo
-                  uri={p.photos[0]}
-                  seed={p.id}
-                  glyph={p.kind === 'event' ? '📅' : p.kind === 'merchandise' ? '🛍️' : '📷'}
-                  style={{ width: TILE, height: TILE }}
-                  radius={10}
-                />
-              </Pressable>
+              <PostTile key={p.id} post={p} size={TILE} />
             ))}
           </View>
         )}

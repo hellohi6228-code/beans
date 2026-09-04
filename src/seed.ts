@@ -257,6 +257,7 @@ export const seedPosts: Post[] = [
     ],
     caption: 'Second pass on the Gesha block. Only the deep red ones today.',
     kind: 'update',
+    contactable: false,
     createdAt: t(5),
   },
   {
@@ -267,6 +268,7 @@ export const seedPosts: Post[] = [
     ],
     caption: 'Drying beds, day nine. Turning every two hours.',
     kind: 'update',
+    contactable: false,
     createdAt: t(14),
   },
   {
@@ -277,6 +279,7 @@ export const seedPosts: Post[] = [
     ],
     caption: 'Cupping table open to visitors this Saturday, 9am at the mill.',
     kind: 'event',
+    contactable: true,
     createdAt: t(22),
   },
   {
@@ -287,6 +290,8 @@ export const seedPosts: Post[] = [
     ],
     caption: 'Ethiopia arrival — 320 bags off the container this morning.',
     kind: 'update',
+    // An arrival announcement is stock they sell, so it carries the chat button.
+    contactable: true,
     createdAt: t(3),
   },
   {
@@ -297,6 +302,7 @@ export const seedPosts: Post[] = [
     ],
     caption: 'Warehouse open house and freight Q&A, first Friday of the month.',
     kind: 'event',
+    contactable: true,
     createdAt: t(16),
   },
   {
@@ -307,6 +313,7 @@ export const seedPosts: Post[] = [
     ],
     caption: 'New bags. Same coffee, less plastic.',
     kind: 'merchandise',
+    contactable: true,
     createdAt: t(8),
   },
   {
@@ -317,6 +324,7 @@ export const seedPosts: Post[] = [
     ],
     caption: 'Roast day. Forty kilos of the house blend through the Loring.',
     kind: 'update',
+    contactable: false,
     createdAt: t(2),
   },
   {
@@ -327,6 +335,7 @@ export const seedPosts: Post[] = [
     ],
     caption: 'Latte art throwdown Thursday, 8pm. Free entry, bring a towel.',
     kind: 'event',
+    contactable: true,
     createdAt: t(4),
   },
   {
@@ -337,6 +346,7 @@ export const seedPosts: Post[] = [
     ],
     caption: 'Retail shelf restocked — bags, brewers, and the good filters.',
     kind: 'merchandise',
+    contactable: true,
     createdAt: t(10),
   },
   {
@@ -347,6 +357,7 @@ export const seedPosts: Post[] = [
     ],
     caption: 'Delivery day at the wet mill. 214 families, one very long queue.',
     kind: 'update',
+    contactable: false,
     createdAt: t(12),
   },
   {
@@ -357,6 +368,7 @@ export const seedPosts: Post[] = [
     ],
     caption: 'First roast on the Kirinyaga. Backed off two degrees, much better.',
     kind: 'update',
+    contactable: false,
     createdAt: t(6),
   },
   {
@@ -367,6 +379,7 @@ export const seedPosts: Post[] = [
     ],
     caption: 'Sunday setup.',
     kind: 'update',
+    contactable: false,
     createdAt: t(20),
   },
 ];
@@ -439,8 +452,12 @@ export const seedReviews: Review[] = [
 ];
 
 export const seedThreads: Thread[] = [
-  { id: 'th1', customerId: 'u_dana', supplierId: 'u_kirinyaga', createdAt: t(34), lastAt: t(30) },
-  { id: 'th2', customerId: 'u_dana', supplierId: 'u_thirdrail', createdAt: t(13), lastAt: t(12) },
+  { id: 'th1', participants: ['u_dana', 'u_kirinyaga'], createdAt: t(34), lastAt: t(30) },
+  { id: 'th2', participants: ['u_dana', 'u_thirdrail'], createdAt: t(13), lastAt: t(12) },
+  // A plain DM off the back of a post, with no order attached to it.
+  { id: 'th3', participants: ['u_dana', 'u_mornings'], createdAt: t(4), lastAt: t(3) },
+  // Two suppliers talking — the coffee shop buys its green from the importer.
+  { id: 'th4', participants: ['u_mornings', 'u_cargo'], createdAt: t(21), lastAt: t(20) },
 ];
 
 export const seedMessages: Message[] = [
@@ -467,5 +484,35 @@ export const seedMessages: Message[] = [
     senderId: 'u_thirdrail',
     text: 'Roasting Friday, out the same day. Total is $17.68, as listed.',
     createdAt: t(12),
+  },
+  { id: 'm7', threadId: 'th3', senderId: 'u_dana', postId: 'p8', system: true, createdAt: t(4) },
+  {
+    id: 'm8',
+    threadId: 'th3',
+    senderId: 'u_dana',
+    text: 'Is the throwdown open to home baristas, or shop staff only?',
+    createdAt: t(4),
+  },
+  {
+    id: 'm9',
+    threadId: 'th3',
+    senderId: 'u_mornings',
+    text: 'Anyone at all. Bring your own jug if you have a favourite.',
+    createdAt: t(3),
+  },
+  { id: 'm10', threadId: 'th4', senderId: 'u_mornings', postId: 'p4', system: true, createdAt: t(21) },
+  {
+    id: 'm11',
+    threadId: 'th4',
+    senderId: 'u_mornings',
+    text: 'Saw the Ethiopia landed. Can we take two bags off that lot for the bar?',
+    createdAt: t(21),
+  },
+  {
+    id: 'm12',
+    threadId: 'th4',
+    senderId: 'u_cargo',
+    text: 'Two bags is fine. Listed price stands, freight quoted separately as always.',
+    createdAt: t(20),
   },
 ];

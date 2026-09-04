@@ -2,23 +2,16 @@ import { useRouter } from 'expo-router';
 import React, { useState } from 'react';
 import { KeyboardAvoidingView, Platform, ScrollView, TextInput, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Header } from '../../src/components/Header';
-import { ListingCard } from '../../src/components/ListingCard';
-import { Btn, Card, Checkbox, Chip, Empty, Field, Label, Row, Segmented, Sub, T } from '../../src/components/ui';
+import { Btn, Card, Checkbox, Field, Segmented, Sub, T } from '../../src/components/ui';
 import { useStore } from '../../src/store';
 import { radius, space, theme } from '../../src/theme';
-import { SUPPLIER_LABEL } from '../../src/types';
 import { Unit, toKg, weightParts } from '../../src/units';
 
+/**
+ * The front page for everyone — a farmer buying from another farmer sees the
+ * same question a home roaster does: how much, and is shipping included.
+ */
 export default function Home() {
-  const { me } = useStore();
-  if (!me) return null;
-  return me.role === 'supplier' ? <SupplierHome /> : <CustomerHome />;
-}
-
-/* =========================================================== customer ==== */
-
-function CustomerHome() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { state, setRequest, me } = useStore();
@@ -27,6 +20,8 @@ function CustomerHome() {
   const [unit, setUnit] = useState<Unit>(state.request?.unit ?? 'kg');
   const [shippingIncluded, setShippingIncluded] = useState(state.request?.shippingIncluded ?? false);
   const [address, setAddress] = useState(state.request?.address ?? '');
+
+  if (!me) return null;
 
   const value = parseFloat(qty.replace(',', '.'));
   const valid = isFinite(value) && value > 0;
@@ -60,7 +55,7 @@ function CustomerHome() {
         <Card style={{ gap: space.lg }}>
           {/* The amount — typed in kg or lb, always shown in both. */}
           <View style={{ gap: space.sm }}>
-            <Row style={{ gap: space.sm, alignItems: 'stretch' }}>
+            <View style={{ flexDirection: 'row', alignItems: 'stretch', gap: space.sm }}>
               <TextInput
                 value={qty}
                 onChangeText={setQty}
@@ -91,7 +86,7 @@ function CustomerHome() {
                   ]}
                 />
               </View>
-            </Row>
+            </View>
 
             <T size={13.5} color={theme.muted}>
               {valid
@@ -126,85 +121,5 @@ function CustomerHome() {
         </Card>
       </ScrollView>
     </KeyboardAvoidingView>
-  );
-}
-
-/* =========================================================== supplier ==== */
-
-function SupplierHome() {
-  const router = useRouter();
-  const insets = useSafeAreaInsets();
-  const { me, listingsOf, ratingOf, reportsAgainst, state } = useStore();
-  if (!me) return null;
-
-  const listings = listingsOf(me.id);
-  const rating = ratingOf(me.id);
-  const reports = reportsAgainst(me.id);
-  const openOrders = state.orders.filter((o) => o.supplierId === me.id && o.status === 'inquiry');
-
-  return (
-    <>
-      <Header
-        title={me.name}
-        subtitle={`${SUPPLIER_LABEL[me.supplierType ?? 'bulk']} · @${me.handle}`}
-        right={<Chip label="+ New listing" onPress={() => router.push('/new-listing')} />}
-      />
-
-      <ScrollView
-        contentContainerStyle={{
-          paddingHorizontal: space.lg,
-          paddingBottom: insets.bottom + 120,
-          gap: space.md,
-        }}
-      >
-        <Row style={{ gap: space.sm }}>
-          <Stat label="Listings" value={String(listings.length)} />
-          <Stat label="New enquiries" value={String(openOrders.length)} />
-          <Stat label="Rating" value={rating.count ? rating.avg.toFixed(1) : '—'} />
-        </Row>
-
-        {reports.length ? (
-          <Card
-            style={{ backgroundColor: theme.warnSoft, borderColor: theme.warnSoft, gap: space.xs }}
-            onPress={() => router.push('/reports')}
-          >
-            <T size={14} weight="700" color={theme.warn}>
-              {reports.length} price discrepancy {reports.length === 1 ? 'report' : 'reports'}
-            </T>
-            <Sub>A buyer says they were asked for a different price than the one you listed. Tap to read them.</Sub>
-          </Card>
-        ) : null}
-
-        <Label>Your listings</Label>
-
-        {listings.length === 0 ? (
-          <Card>
-            <Empty
-              glyph="🫘"
-              title="No listings yet"
-              body="Photograph a lot, name your price per kg or lb, and say whether shipping is included."
-            />
-            <Btn title="Create your first listing" onPress={() => router.push('/new-listing')} />
-          </Card>
-        ) : (
-          listings.map((l) => <ListingCard key={l.id} listing={l} supplier={me} />)
-        )}
-
-        <Btn title="Post to your profile" kind="ghost" onPress={() => router.push('/new-post')} />
-      </ScrollView>
-    </>
-  );
-}
-
-function Stat({ label, value }: { label: string; value: string }) {
-  return (
-    <Card style={{ flex: 1, padding: space.md, alignItems: 'center', gap: 2 }}>
-      <T size={22} weight="800">
-        {value}
-      </T>
-      <T size={11.5} color={theme.muted} weight="600">
-        {label}
-      </T>
-    </Card>
   );
 }

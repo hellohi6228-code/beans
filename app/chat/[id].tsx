@@ -3,7 +3,7 @@ import React, { useRef, useState } from 'react';
 import { KeyboardAvoidingView, Platform, ScrollView, TextInput, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Header } from '../../src/components/Header';
-import { Btn, Card, Chip, Divider, Label, Row, T } from '../../src/components/ui';
+import { Btn, Card, Chip, Divider, Label, Photo, Row, T } from '../../src/components/ui';
 import { useStore } from '../../src/store';
 import { radius, space, theme } from '../../src/theme';
 import { SUPPLIER_LABEL } from '../../src/types';
@@ -20,7 +20,7 @@ export default function Chat() {
   const thread = state.threads.find((t) => t.id === String(id));
   if (!thread || !me) return <Header back title="Conversation not found" />;
 
-  const otherId = thread.customerId === me.id ? thread.supplierId : thread.customerId;
+  const otherId = thread.participants.find((p) => p !== me.id) ?? thread.participants[0];
   const other = userById(otherId);
   const messages = messagesOf(thread.id);
 
@@ -60,6 +60,43 @@ export default function Chat() {
         </Card>
 
         {messages.map((m) => {
+          if (m.postId) {
+            const post = state.posts.find((p) => p.id === m.postId);
+            if (!post) return null;
+            const author = userById(post.userId);
+            return (
+              <Card key={m.id} onPress={() => router.push(`/post/${post.id}`)} style={{ padding: space.md, gap: space.sm }}>
+                <Label>
+                  {m.senderId === me.id ? 'You asked about' : 'Asked about'}{' '}
+                  {post.kind === 'event' ? 'this event' : 'this post'}
+                </Label>
+                <Row style={{ gap: space.md }}>
+                  <Photo
+                    uri={post.photos[0]}
+                    seed={post.id}
+                    glyph={post.kind === 'event' ? '📅' : post.kind === 'merchandise' ? '🛍️' : '📷'}
+                    style={{ width: 64, height: 64 }}
+                    radius={10}
+                  />
+                  <View style={{ flex: 1, gap: 4 }}>
+                    <T size={13.5} numberOfLines={3} style={{ lineHeight: 18 }}>
+                      {post.caption}
+                    </T>
+                    <Row style={{ gap: 6 }}>
+                      <Chip
+                        label={post.kind === 'event' ? 'Event' : post.contactable ? 'For sale' : 'Post'}
+                        tone={post.kind === 'event' ? 'gold' : 'neutral'}
+                      />
+                      <T size={11.5} color={theme.muted}>
+                        {author?.name}
+                      </T>
+                    </Row>
+                  </View>
+                </Row>
+              </Card>
+            );
+          }
+
           if (m.orderId) {
             const order = state.orders.find((o) => o.id === m.orderId);
             if (!order) return null;

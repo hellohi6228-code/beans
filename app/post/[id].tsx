@@ -1,11 +1,11 @@
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import React from 'react';
-import { Dimensions, ScrollView, View } from 'react-native';
+import { Dimensions, Pressable, ScrollView, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Header } from '../../src/components/Header';
 import { Avatar, Card, Chip, Photo, Row, Sub, T } from '../../src/components/ui';
 import { useStore } from '../../src/store';
-import { space, theme } from '../../src/theme';
+import { shadow, space, theme } from '../../src/theme';
 
 const W = Dimensions.get('window').width;
 
@@ -13,11 +13,14 @@ export default function PostDetail() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const { state, userById } = useStore();
+  const { state, userById, me, openThread } = useStore();
 
   const post = state.posts.find((p) => p.id === String(id));
   if (!post) return <Header back title="Post not found" />;
   const author = userById(post.userId);
+
+  const canAsk = post.contactable && !!me && me.id !== post.userId;
+  const ask = () => router.push(`/chat/${openThread(post.userId, post.id)}`);
 
   return (
     <>
@@ -26,19 +29,52 @@ export default function PostDetail() {
       <ScrollView
         contentContainerStyle={{ paddingHorizontal: space.lg, paddingBottom: insets.bottom + space.xxl, gap: space.md }}
       >
-        <ScrollView horizontal pagingEnabled showsHorizontalScrollIndicator={false} style={{ marginHorizontal: -space.lg }}>
-          <View style={{ flexDirection: 'row', gap: space.sm, paddingHorizontal: space.lg }}>
-            {(post.photos.length ? post.photos : [undefined]).map((uri, i) => (
-              <Photo
-                key={i}
-                uri={uri}
-                seed={post.id + i}
-                glyph={post.kind === 'event' ? '📅' : post.kind === 'merchandise' ? '🛍️' : '📷'}
-                style={{ width: W - space.lg * 2, height: 260 }}
-              />
-            ))}
-          </View>
-        </ScrollView>
+        <View>
+          <ScrollView
+            horizontal
+            pagingEnabled
+            showsHorizontalScrollIndicator={false}
+            style={{ marginHorizontal: -space.lg }}
+          >
+            <View style={{ flexDirection: 'row', gap: space.sm, paddingHorizontal: space.lg }}>
+              {(post.photos.length ? post.photos : [undefined]).map((uri, i) => (
+                <Photo
+                  key={i}
+                  uri={uri}
+                  seed={post.id + i}
+                  glyph={post.kind === 'event' ? '📅' : post.kind === 'merchandise' ? '🛍️' : '📷'}
+                  style={{ width: W - space.lg * 2, height: 260 }}
+                />
+              ))}
+            </View>
+          </ScrollView>
+
+          {/* Sellable posts and events carry a chat button in the corner. */}
+          {canAsk ? (
+            <Pressable
+              onPress={ask}
+              hitSlop={8}
+              style={{
+                position: 'absolute',
+                top: 10,
+                left: 10,
+                height: 36,
+                paddingHorizontal: 12,
+                borderRadius: 18,
+                backgroundColor: 'rgba(255,255,255,0.94)',
+                flexDirection: 'row',
+                alignItems: 'center',
+                gap: 6,
+                ...shadow,
+              }}
+            >
+              <T size={14}>💬</T>
+              <T size={12.5} weight="700" color={theme.ink}>
+                Ask about this
+              </T>
+            </Pressable>
+          ) : null}
+        </View>
 
         <Card style={{ gap: space.sm }}>
           <Row style={{ gap: space.md }}>

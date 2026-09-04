@@ -13,12 +13,13 @@ import { weightParts } from '../src/units';
 export default function Results() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const { state, userById, ratingOf } = useStore();
+  const { state, userById, ratingOf, me } = useStore();
   const req = state.request;
 
   const { covers, smaller } = useMemo(() => {
     const qtyKg = req?.qtyKg ?? 0;
-    let pool = state.listings.filter((l) => l.active);
+    // Anyone can buy from anyone — you just cannot buy from yourself.
+    let pool = state.listings.filter((l) => l.active && l.supplierId !== me?.id);
     if (req?.shippingIncluded) pool = pool.filter((l) => l.shippingIncluded);
 
     const byTotal = (a: typeof pool[number], b: typeof pool[number]) =>
@@ -28,9 +29,9 @@ export default function Results() {
       covers: pool.filter((l) => l.lotKg >= qtyKg).sort(byTotal),
       smaller: pool.filter((l) => l.lotKg < qtyKg).sort((a, b) => a.pricePerKg - b.pricePerKg),
     };
-  }, [state.listings, req]);
+  }, [state.listings, req, me]);
 
-  const suppliers = state.users.filter((u) => u.role === 'supplier');
+  const suppliers = state.users.filter((u) => u.role === 'supplier' && u.id !== me?.id);
 
   if (!req) {
     return (
