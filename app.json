@@ -1,25 +1,50 @@
 {
   "expo": {
-    "name": "beans-tmp",
-    "slug": "beans-tmp",
+    "name": "Beans",
+    "slug": "beans",
+    "scheme": "beans",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
+    "newArchEnabled": true,
+    "splash": {
+      "image": "./assets/splash-icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#DCEBF8"
+    },
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.beans.sourcing",
+      "infoPlist": {
+        "NSCameraUsageDescription": "Beans uses your camera so you can photograph your coffee beans, your shop and your events.",
+        "NSPhotoLibraryUsageDescription": "Beans needs access to your photos so you can upload pictures of your beans and your business."
+      }
     },
     "android": {
+      "package": "com.beans.sourcing",
       "adaptiveIcon": {
-        "backgroundColor": "#E6F4FE",
+        "backgroundColor": "#DCEBF8",
         "foregroundImage": "./assets/android-icon-foreground.png",
         "backgroundImage": "./assets/android-icon-background.png",
         "monochromeImage": "./assets/android-icon-monochrome.png"
       },
+      "permissions": ["android.permission.CAMERA", "android.permission.READ_MEDIA_IMAGES"],
       "predictiveBackGestureEnabled": false
     },
     "web": {
-      "favicon": "./assets/favicon.png"
-    }
+      "favicon": "./assets/favicon.png",
+      "bundler": "metro"
+    },
+    "plugins": [
+      "expo-router",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Beans needs access to your photos so you can upload pictures of your beans and your business.",
+          "cameraPermission": "Beans uses your camera so you can photograph your coffee beans, your shop and your events."
+        }
+      ]
+    ]
   }
 }

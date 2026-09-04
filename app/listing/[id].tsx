@@ -1,0 +1,246 @@
+import { useLocalSearchParams, useRouter } from 'expo-router';
+import React, { useState } from 'react';
+import { Dimensions, ScrollView, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Header } from '../../src/components/Header';
+import {
+  Avatar,
+  Btn,
+  Card,
+  Chip,
+  Divider,
+  Field,
+  Label,
+  Photo,
+  Row,
+  Segmented,
+  Stars,
+  Sub,
+  T,
+} from '../../src/components/ui';
+import { useStore } from '../../src/store';
+import { space, theme } from '../../src/theme';
+import { SUPPLIER_LABEL } from '../../src/types';
+import { Unit, money, priceParts, toKg, weightParts } from '../../src/units';
+
+const W = Dimensions.get('window').width;
+
+export default function ListingDetail() {
+  const { id } = useLocalSearchParams<{ id: string }>();
+  const router = useRouter();
+  const insets = useSafeAreaInsets();
+  const { listingById, userById, ratingOf, reviewsOfSupplier, startOrder, me, state } = useStore();
+
+  const listing = listingById(String(id));
+  const supplier = listing ? userById(listing.supplierId) : undefined;
+
+  const [unit, setUnit] = useState<Unit>(state.request?.unit ?? 'kg');
+  const [qty, setQty] = useState(() => {
+    if (!listing) return '';
+    const wanted = state.request?.qtyKg ?? listing.lotKg;
+    const kg = Math.min(wanted, listing.lotKg);
+    const u = state.request?.unit ?? 'kg';
+    return String(Number((u === 'kg' ? kg : kg * 2.20462262).toFixed(2)));
+  });
+
+  if (!listing || !supplier) {
+    return <Header back title="Listing not found" />;
+  }
+
+  const price = priceParts(listing.pricePerKg);
+  const lot = weightParts(listing.lotKg);
+  const rating = ratingOf(supplier.id);
+  const reviews = reviewsOfSupplier(supplier.id).slice(0, 2);
+
+  const parsed = parseFloat(qty.replace(',', '.'));
+  const qtyKg = isFinite(parsed) && parsed > 0 ? toKg(parsed, unit) : 0;
+  const overLot = qtyKg > listing.lotKg + 1e-9;
+  const canOrder = me?.role === 'customer' && qtyKg > 0 && !overLot;
+  const total = listing.pricePerKg * qtyKg;
+
+  const order = () => {
+    const { threadId } = startOrder(listing.id, qtyKg);
+    router.replace(`/chat/${threadId}`);
+  };
+
+  return (
+    <>
+      <Header back title={listing.title} subtitle={supplier.name} />
+
+      <ScrollView
+        contentContainerStyle={{ paddingHorizontal: space.lg, paddingBottom: insets.bottom + space.xxl, gap: space.md }}
+      >
+        {/* 1–3 photos of the beans */}
+        <ScrollView horizontal pagingEnabled showsHorizontalScrollIndicator={false} style={{ marginHorizontal: -space.lg }}>
+          <View style={{ flexDirection: 'row', gap: space.sm, paddingHorizontal: space.lg }}>
+            {(listing.photos.length ? listing.photos : [undefined]).map((uri, i) => (
+              <Photo
+                key={i}
+                uri={uri}
+                seed={listing.id + i}
+                glyph="🫘"
+                style={{ width: W - space.lg * 2, height: 230 }}
+              />
+            ))}
+          </View>
+        </ScrollView>
+
+        <Card style={{ gap: space.sm }}>
+          <T size={20} weight="700">
+            {listing.title}
+          </T>
+
+          <Row style={{ gap: space.sm, flexWrap: 'wrap' }}>
+            <Chip label={listing.origin} />
+            <Chip label={listing.process} />
+            <Chip label={listing.roast} />
+            <Chip
+              label={listing.shippingIncluded ? 'Shipping included' : 'Shipping not included'}
+              tone={listing.shippingIncluded ? 'good' : 'warn'}
+            />
+          </Row>
+
+          <Divider />
+
+          <Row style={{ justifyContent: 'space-between' }}>
+            <View>
+              <Label>Price</Label>
+              <T size={22} weight="800" color={theme.accent}>
+                {price.perKg}
+              </T>
+              <T size={15} weight="600" color={theme.inkSoft}>
+                {price.perLb}
+              </T>
+            </View>
+            <View style={{ alignItems: 'flex-end' }}>
+              <Label>Lot size</Label>
+              <T size={22} weight="800">
+                {lot.kg}
+              </T>
+              <T size={15} weight="600" color={theme.inkSoft}>
+                {lot.lb}
+              </T>
+            </View>
+          </Row>
+
+          <Divider />
+
+          <Sub>{listing.description}</Sub>
+
+          <Card style={{ backgroundColor: theme.accentSoft, borderColor: theme.accentSoft, padding: space.md }}>
+            <T size={13} weight="700" color={theme.accent}>
+              {listing.shippingIncluded
+                ? 'This price includes shipping within the US.'
+                : 'Shipping is arranged separately with the supplier.'}
+            </T>
+            <T size={12.5} color={theme.inkSoft} style={{ marginTop: 2 }}>
+              Processing, banking and tax are already in the listed price. If the supplier asks for anything more,
+              report it.
+            </T>
+          </Card>
+        </Card>
+
+        {/* Supplier */}
+        <Card onPress={() => router.push(`/business/${supplier.id}`)} style={{ padding: space.md }}>
+          <Row style={{ gap: space.md }}>
+            <Avatar uri={supplier.avatar} name={supplier.name} />
+            <View style={{ flex: 1 }}>
+              <T size={15} weight="700">
+                {supplier.name}
+              </T>
+              <T size={12.5} color={theme.muted}>
+                {SUPPLIER_LABEL[supplier.supplierType ?? 'bulk']} · {supplier.location}
+              </T>
+              {rating.count ? (
+                <Row style={{ gap: 6, marginTop: 2 }}>
+                  <Stars value={rating.avg} />
+                  <T size={12} color={theme.muted}>
+                    {rating.avg.toFixed(1)} · {rating.count} {rating.count === 1 ? 'review' : 'reviews'}
+                  </T>
+                </Row>
+              ) : null}
+            </View>
+            <T size={18} color={theme.muted}>
+              ›
+            </T>
+          </Row>
+        </Card>
+
+        {/* Order */}
+        {me?.role === 'customer' ? (
+          <Card style={{ gap: space.md }}>
+            <Label>How much do you want</Label>
+            <Row style={{ gap: space.sm, alignItems: 'flex-end' }}>
+              <Field value={qty} onChangeText={setQty} keyboardType="decimal-pad" style={{ flex: 1 }} />
+              <View style={{ width: 120 }}>
+                <Segmented
+                  value={unit}
+                  onChange={setUnit}
+                  options={[
+                    { value: 'kg', label: 'kg' },
+                    { value: 'lb', label: 'lb' },
+                  ]}
+                />
+              </View>
+            </Row>
+
+            <T size={13} color={overLot ? theme.warn : theme.muted}>
+              {overLot
+                ? `Only ${lot.kg} / ${lot.lb} available in this lot.`
+                : qtyKg > 0
+                  ? `${weightParts(qtyKg).kg} / ${weightParts(qtyKg).lb}`
+                  : 'Enter an amount.'}
+            </T>
+
+            <Divider />
+
+            <Row style={{ justifyContent: 'space-between' }}>
+              <View>
+                <Label>Total</Label>
+                <T size={12.5} color={theme.muted}>
+                  {listing.shippingIncluded ? 'Shipping included' : 'Plus shipping, agreed in chat'}
+                </T>
+              </View>
+              <T size={26} weight="800">
+                {money(total)}
+              </T>
+            </Row>
+
+            <Btn title="Order — opens a chat with the supplier" onPress={order} disabled={!canOrder} />
+            <T size={12} color={theme.muted} style={{ textAlign: 'center' }}>
+              Beans does not take payment. You and the supplier settle up however you both prefer.
+            </T>
+          </Card>
+        ) : null}
+
+        {/* Reviews */}
+        {reviews.length ? (
+          <>
+            <Label>Recent reviews of this supplier</Label>
+            {reviews.map((r) => {
+              const author = userById(r.customerId);
+              return (
+                <Card key={r.id} style={{ padding: space.md, gap: 4 }}>
+                  <Row style={{ gap: space.sm }}>
+                    <Avatar name={author?.name ?? '?'} uri={author?.avatar} size={30} />
+                    <T size={13.5} weight="600">
+                      {author?.name ?? 'Buyer'}
+                    </T>
+                    <Stars value={r.rating} />
+                  </Row>
+                  <Sub>{r.text}</Sub>
+                </Card>
+              );
+            })}
+          </>
+        ) : null}
+
+        <Btn
+          title="Report a price discrepancy"
+          kind="danger"
+          onPress={() => router.push(`/report/${listing.id}`)}
+        />
+      </ScrollView>
+    </>
+  );
+}
