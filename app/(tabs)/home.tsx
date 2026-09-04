@@ -37,7 +37,7 @@ export default function Home() {
     <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
       <ScrollView
         contentContainerStyle={{
-          paddingTop: insets.top + space.xxl,
+          paddingTop: space.xl,
           paddingHorizontal: space.lg,
           paddingBottom: insets.bottom + 120,
           gap: space.lg,
@@ -114,10 +114,7 @@ export default function Home() {
           <Btn title="Find beans" onPress={search} disabled={!ready} />
         </Card>
 
-        {/* Everyone starts as a buyer. This is how you start selling. */}
-        {me.role === 'supplier' ? (
-          <Btn title="My listings" kind="ghost" onPress={() => router.navigate('/listings')} />
-        ) : picking ? (
+        {me.role === 'supplier' ? null : picking ? (
           <Card style={{ gap: space.sm }}>
             <Label>What do you sell as</Label>
             {TYPES.map((t) => (
@@ -128,7 +125,6 @@ export default function Home() {
                 onPress={() => {
                   becomeSupplier(t);
                   setPicking(false);
-                  router.navigate('/listings');
                 }}
               />
             ))}

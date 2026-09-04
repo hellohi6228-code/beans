@@ -1,12 +1,10 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
-import { BADGES, Badge, BadgeCtx, isEarned } from './badges';
-import { Listing, Message, Order, Post, Report, Review, SupplierType, Thread, User } from './types';
+import { Message, Order, Post, Report, Review, SupplierType, Thread, User } from './types';
 import { Unit } from './units';
 
-const KEY = 'beans.state.v3';
+const KEY = 'beans.state.v4';
 
-/** What the front page asks: how much, and is shipping included. */
 export type SourcingRequest = {
   qty: number;
   unit: Unit;
@@ -18,21 +16,18 @@ export type SourcingRequest = {
 type Persisted = {
   users: User[];
   posts: Post[];
-  listings: Listing[];
   orders: Order[];
   threads: Thread[];
   messages: Message[];
   reviews: Review[];
   reports: Report[];
-  /** The account on this device. Created on first launch, never signed out of. */
   meId: string | null;
   request: SourcingRequest | null;
 };
 
-const empty: Persisted = {
+const blank: Persisted = {
   users: [],
   posts: [],
-  listings: [],
   orders: [],
   threads: [],
   messages: [],
@@ -44,20 +39,30 @@ const empty: Persisted = {
 
 const uid = (p: string) => `${p}_${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`;
 
+const newUser = (name: string): User => ({
+  id: uid('u'),
+  role: 'customer',
+  name,
+  bio: '',
+  createdAt: Date.now(),
+});
+
 type Ctx = {
   hydrated: boolean;
   state: Persisted;
   me: User | null;
 
   updateMe: (patch: Partial<User>) => void;
-  /** Flips the account to a supplier so it can list beans. */
   becomeSupplier: (type: SupplierType) => void;
+
+  /** Testing only: extra accounts on this device, and switching between them. */
+  addTestUser: () => User;
+  switchUser: (id: string) => void;
 
   setRequest: (r: SourcingRequest | null) => void;
 
   userById: (id: string) => User | undefined;
-  listingById: (id: string) => Listing | undefined;
-  listingsOf: (supplierId: string) => Listing[];
+  postById: (id: string) => Post | undefined;
   postsOf: (userId: string) => Post[];
   reviewsOfSupplier: (supplierId: string) => Review[];
   ratingOf: (supplierId: string) => { avg: number; count: number };
@@ -65,26 +70,23 @@ type Ctx = {
   threadsOf: (userId: string) => Thread[];
   messagesOf: (threadId: string) => Message[];
 
-  addListing: (input: Omit<Listing, 'id' | 'createdAt' | 'supplierId' | 'active'>) => Listing;
-  removeListing: (id: string) => void;
   addPost: (input: Omit<Post, 'id' | 'createdAt' | 'userId'>) => Post;
   removePost: (id: string) => void;
+  /** Switch a post's listing on or off without deleting the post. */
+  toggleListing: (postId: string) => void;
 
   openThread: (otherUserId: string, aboutPostId?: string) => string;
-  startOrder: (listingId: string, qtyKg: number) => { threadId: string; orderId: string };
+  startOrder: (postId: string, qtyKg: number) => { threadId: string; orderId: string };
   sendMessage: (threadId: string, text: string) => void;
-  setOrderStatus: (orderId: string, status: Order['status']) => void;
 
   addReview: (input: Omit<Review, 'id' | 'createdAt' | 'customerId'>) => void;
-  addReport: (input: Omit<Report, 'id' | 'createdAt' | 'reporterId' | 'status'>) => void;
-
-  badgesFor: (userId: string) => { badge: Badge; earned: boolean; have: number; need: number }[];
+  addReport: (input: Omit<Report, 'id' | 'createdAt' | 'reporterId'>) => void;
 };
 
 const StoreCtx = createContext<Ctx | null>(null);
 
 export function StoreProvider({ children }: { children: React.ReactNode }) {
-  const [state, setState] = useState<Persisted>(empty);
+  const [state, setState] = useState<Persisted>(blank);
   const [hydrated, setHydrated] = useState(false);
 
   useEffect(() => {
@@ -92,17 +94,16 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     AsyncStorage.getItem(KEY)
       .then((raw) => {
         if (!alive) return;
-        let next = empty;
+        let next = blank;
         if (raw) {
           try {
-            next = { ...empty, ...(JSON.parse(raw) as Persisted) };
+            next = { ...blank, ...(JSON.parse(raw) as Persisted) };
           } catch {
             // Unreadable cache — start clean.
           }
         }
-        // The device's account. There is no sign up: first launch creates it.
         if (!next.meId || !next.users.some((u) => u.id === next.meId)) {
-          const account: User = { id: uid('u'), role: 'customer', name: '', bio: '', createdAt: Date.now() };
+          const account = newUser('');
           next = { ...next, users: [...next.users, account], meId: account.id };
         }
         setState(next);
@@ -119,9 +120,8 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   }, [state, hydrated]);
 
   const me = useMemo(() => state.users.find((u) => u.id === state.meId) ?? null, [state.users, state.meId]);
-
   const userById = useCallback((id: string) => state.users.find((u) => u.id === id), [state.users]);
-  const listingById = useCallback((id: string) => state.listings.find((l) => l.id === id), [state.listings]);
+  const postById = useCallback((id: string) => state.posts.find((p) => p.id === id), [state.posts]);
 
   const value: Ctx = {
     hydrated,
@@ -137,14 +137,18 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
         users: s.users.map((u) => (u.id === s.meId ? { ...u, role: 'supplier', supplierType: type } : u)),
       })),
 
+    addTestUser: () => {
+      const account = newUser('');
+      setState((s) => ({ ...s, users: [...s.users, account], meId: account.id }));
+      return account;
+    },
+
+    switchUser: (id) => setState((s) => ({ ...s, meId: id })),
+
     setRequest: (request) => setState((s) => ({ ...s, request })),
 
     userById,
-    listingById,
-    listingsOf: (supplierId) =>
-      state.listings
-        .filter((l) => l.supplierId === supplierId && l.active)
-        .sort((a, b) => b.createdAt - a.createdAt),
+    postById,
     postsOf: (userId) => state.posts.filter((p) => p.userId === userId).sort((a, b) => b.createdAt - a.createdAt),
     reviewsOfSupplier: (supplierId) =>
       state.reviews.filter((r) => r.supplierId === supplierId).sort((a, b) => b.createdAt - a.createdAt),
@@ -160,21 +164,6 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     messagesOf: (threadId) =>
       state.messages.filter((m) => m.threadId === threadId).sort((a, b) => a.createdAt - b.createdAt),
 
-    addListing: (input) => {
-      const listing: Listing = {
-        ...input,
-        id: uid('l'),
-        supplierId: state.meId ?? '',
-        createdAt: Date.now(),
-        active: true,
-      };
-      setState((s) => ({ ...s, listings: [listing, ...s.listings] }));
-      return listing;
-    },
-
-    removeListing: (id) =>
-      setState((s) => ({ ...s, listings: s.listings.map((l) => (l.id === id ? { ...l, active: false } : l)) })),
-
     addPost: (input) => {
       const post: Post = { ...input, id: uid('p'), userId: state.meId ?? '', createdAt: Date.now() };
       setState((s) => ({ ...s, posts: [post, ...s.posts] }));
@@ -182,6 +171,14 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     },
 
     removePost: (id) => setState((s) => ({ ...s, posts: s.posts.filter((p) => p.id !== id) })),
+
+    toggleListing: (postId) =>
+      setState((s) => ({
+        ...s,
+        posts: s.posts.map((p) =>
+          p.id === postId && p.listing ? { ...p, listing: { ...p.listing, active: !p.listing.active } } : p
+        ),
+      })),
 
     openThread: (otherUserId, aboutPostId) => {
       const meId = state.meId!;
@@ -191,10 +188,10 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       const threadId = existing?.id ?? uid('th');
       const now = Date.now();
 
-      const alreadyPinned =
+      const pinned =
         aboutPostId && state.messages.some((m) => m.threadId === threadId && m.postId === aboutPostId);
       const card: Message | null =
-        aboutPostId && !alreadyPinned
+        aboutPostId && !pinned
           ? { id: uid('m'), threadId, senderId: meId, postId: aboutPostId, system: true, createdAt: now }
           : null;
 
@@ -211,24 +208,25 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       return threadId;
     },
 
-    startOrder: (listingId, qtyKg) => {
-      const listing = state.listings.find((l) => l.id === listingId)!;
+    startOrder: (postId, qtyKg) => {
+      const post = state.posts.find((p) => p.id === postId)!;
+      const listing = post.listing!;
       const customerId = state.meId!;
       const existing = state.threads.find(
-        (t) => t.participants.includes(customerId) && t.participants.includes(listing.supplierId)
+        (t) => t.participants.includes(customerId) && t.participants.includes(post.userId)
       );
       const threadId = existing?.id ?? uid('th');
       const now = Date.now();
+
       const order: Order = {
         id: uid('o'),
-        listingId,
+        postId,
         customerId,
-        supplierId: listing.supplierId,
+        supplierId: post.userId,
         qtyKg,
         lockedPricePerKg: listing.pricePerKg,
         lockedTotal: listing.pricePerKg * qtyKg,
         shippingIncluded: listing.shippingIncluded,
-        status: 'inquiry',
         createdAt: now,
         reviewed: false,
       };
@@ -246,10 +244,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
         orders: [order, ...s.orders],
         threads: existing
           ? s.threads.map((t) => (t.id === threadId ? { ...t, lastAt: now } : t))
-          : [
-              { id: threadId, participants: [customerId, listing.supplierId], createdAt: now, lastAt: now },
-              ...s.threads,
-            ],
+          : [{ id: threadId, participants: [customerId, post.userId], createdAt: now, lastAt: now }, ...s.threads],
         messages: [...s.messages, card],
       }));
 
@@ -266,39 +261,18 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       }));
     },
 
-    setOrderStatus: (orderId, status) =>
-      setState((s) => ({ ...s, orders: s.orders.map((o) => (o.id === orderId ? { ...o, status } : o)) })),
-
     addReview: (input) => {
       const review: Review = { ...input, id: uid('r'), customerId: state.meId ?? '', createdAt: Date.now() };
       setState((s) => ({
         ...s,
         reviews: [review, ...s.reviews],
-        orders: s.orders.map((o) => (o.id === input.orderId ? { ...o, reviewed: true, status: 'completed' } : o)),
+        orders: s.orders.map((o) => (o.id === input.orderId ? { ...o, reviewed: true } : o)),
       }));
     },
 
     addReport: (input) => {
-      const report: Report = {
-        ...input,
-        id: uid('rep'),
-        reporterId: state.meId ?? '',
-        status: 'under_review',
-        createdAt: Date.now(),
-      };
+      const report: Report = { ...input, id: uid('rep'), reporterId: state.meId ?? '', createdAt: Date.now() };
       setState((s) => ({ ...s, reports: [report, ...s.reports] }));
-    },
-
-    badgesFor: (userId) => {
-      const ctx: BadgeCtx = {
-        orders: state.orders.filter((o) => o.customerId === userId),
-        reviews: state.reviews.filter((r) => r.customerId === userId),
-        supplierOf: (id) => state.users.find((u) => u.id === id),
-      };
-      return BADGES.map((badge) => {
-        const { have, need } = badge.progress(ctx);
-        return { badge, earned: isEarned(badge, ctx), have, need };
-      });
     },
   };
 

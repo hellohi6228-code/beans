@@ -3,6 +3,7 @@ import { StatusBar } from 'expo-status-bar';
 import React from 'react';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { DemoBar } from '../src/components/DemoBar';
 import { Screen } from '../src/components/ui';
 import { StoreProvider } from '../src/store';
 
@@ -12,8 +13,8 @@ export default function RootLayout() {
       <SafeAreaProvider>
         <StoreProvider>
           <StatusBar style="dark" />
-          {/* One light-blue to very-light-grey gradient behind the whole app. */}
           <Screen>
+            <DemoBar />
             <Stack
               screenOptions={{
                 headerShown: false,
@@ -23,7 +24,6 @@ export default function RootLayout() {
             >
               <Stack.Screen name="index" options={{ animation: 'none' }} />
               <Stack.Screen name="(tabs)" options={{ animation: 'none' }} />
-              <Stack.Screen name="new-listing" options={{ presentation: 'modal', animation: 'slide_from_bottom' }} />
               <Stack.Screen name="new-post" options={{ presentation: 'modal', animation: 'slide_from_bottom' }} />
               <Stack.Screen name="edit-profile" options={{ presentation: 'modal', animation: 'slide_from_bottom' }} />
             </Stack>

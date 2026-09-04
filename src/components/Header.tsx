@@ -1,7 +1,6 @@
 import { useRouter } from 'expo-router';
 import React from 'react';
 import { Pressable, View } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { space, theme } from '../theme';
 import { T } from './ui';
 
@@ -17,10 +16,9 @@ export function Header({
   right?: React.ReactNode;
 }) {
   const router = useRouter();
-  const insets = useSafeAreaInsets();
 
   return (
-    <View style={{ paddingTop: insets.top + space.sm, paddingHorizontal: space.lg, paddingBottom: space.sm }}>
+    <View style={{ paddingTop: space.sm, paddingHorizontal: space.lg, paddingBottom: space.sm }}>
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.md, minHeight: 34 }}>
         {back ? (
           <Pressable

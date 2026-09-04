@@ -6,24 +6,19 @@ import { PhotoPicker } from '../../src/components/PhotoPicker';
 import { Btn, Card, Chip, Divider, Field, Label, Row, Sub, T } from '../../src/components/ui';
 import { useStore } from '../../src/store';
 import { space, theme } from '../../src/theme';
-import { money, priceParts, weightParts } from '../../src/units';
+import { money, priceParts } from '../../src/units';
 
-const REASONS = [
-  'Asked for more',
-  'Charged shipping anyway',
-  'Added a fee',
-  'Added tax',
-  'Something else',
-];
+const REASONS = ['Asked for more', 'Charged shipping anyway', 'Added a fee', 'Added tax', 'Something else'];
 
 export default function ReportPrice() {
-  const { listingId, orderId } = useLocalSearchParams<{ listingId: string; orderId?: string }>();
+  const { postId, orderId } = useLocalSearchParams<{ postId: string; orderId?: string }>();
   const router = useRouter();
-  const { listingById, userById, state, addReport } = useStore();
+  const { postById, userById, state, addReport } = useStore();
 
-  const listing = listingById(String(listingId));
-  const supplier = listing ? userById(listing.supplierId) : undefined;
+  const post = postById(String(postId));
+  const seller = post ? userById(post.userId) : undefined;
   const order = orderId ? state.orders.find((o) => o.id === String(orderId)) : undefined;
+  const listing = post?.listing;
 
   const listedTotal = order ? order.lockedTotal : listing ? listing.pricePerKg * listing.lotKg : 0;
 
@@ -33,7 +28,7 @@ export default function ReportPrice() {
   const [photos, setPhotos] = useState<string[]>([]);
   const [sent, setSent] = useState(false);
 
-  if (!listing || !supplier) return <Header back title="Not found" />;
+  if (!post || !seller || !listing) return <Header back title="Not found" />;
 
   const askedNum = parseFloat(asked.replace(/[^0-9.]/g, ''));
   const valid = isFinite(askedNum) && askedNum >= 0;
@@ -42,9 +37,9 @@ export default function ReportPrice() {
 
   const submit = () => {
     addReport({
-      listingId: listing.id,
+      postId: post.id,
       orderId: order?.id,
-      supplierId: supplier.id,
+      supplierId: seller.id,
       listedTotal,
       askedTotal: askedNum,
       reason,
@@ -64,9 +59,8 @@ export default function ReportPrice() {
             <T size={19} weight="700">
               Report filed
             </T>
-            <Sub>{supplier.name} has been notified.</Sub>
+            <Sub>{seller.name} has been notified.</Sub>
           </Card>
-
           <Btn title="Done" onPress={() => router.back()} />
         </ScrollView>
       </>
@@ -77,26 +71,23 @@ export default function ReportPrice() {
 
   return (
     <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-      <Header back title="Report price" subtitle={supplier.name} />
+      <Header back title="Report price" subtitle={seller.name} />
 
       <ScrollView
         contentContainerStyle={{ padding: space.lg, paddingTop: 0, gap: space.md, paddingBottom: space.xxl }}
         keyboardShouldPersistTaps="handled"
       >
         <Card style={{ gap: space.sm }}>
-          <T size={15.5} weight="700">
-            {listing.title}
+          <T size={15} weight="700" numberOfLines={2}>
+            {post.caption || 'Post'}
           </T>
           <T size={12.5} color={theme.muted}>
             {price.perKg} · {price.perLb}
-            {order ? ` · ${weightParts(order.qtyKg).kg} / ${weightParts(order.qtyKg).lb}` : ''}
           </T>
-          <Row style={{ gap: 6 }}>
-            <Chip
-              label={listing.shippingIncluded ? 'Shipping included' : 'Shipping not included'}
-              tone={listing.shippingIncluded ? 'good' : 'warn'}
-            />
-          </Row>
+          <Chip
+            label={listing.shippingIncluded ? 'Shipping included' : 'Shipping not included'}
+            tone={listing.shippingIncluded ? 'good' : 'warn'}
+          />
 
           <Divider />
 
@@ -142,23 +133,12 @@ export default function ReportPrice() {
             </View>
           </View>
 
-          <Field
-            label="Details"
-            value={details}
-            onChangeText={setDetails}
-            multiline
-            placeholder="What happened?"
-          />
+          <Field label="Details" value={details} onChangeText={setDetails} multiline placeholder="What happened?" />
 
-          <PhotoPicker
-            photos={photos}
-            onChange={setPhotos}
-            max={3}
-            label="Screenshots"
-          />
+          <PhotoPicker photos={photos} onChange={setPhotos} max={3} label="Screenshots" />
         </Card>
 
-        <Card style={{ backgroundColor: theme.warnSoft, borderColor: theme.warnSoft, padding: space.md, gap: 4 }}>
+        <Card style={{ backgroundColor: theme.warnSoft, borderColor: theme.warnSoft, padding: space.md }}>
           <T size={12.5} color={theme.inkSoft}>
             The listed price is the final price. Any difference counts.
           </T>

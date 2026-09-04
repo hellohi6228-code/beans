@@ -13,7 +13,7 @@ export default function Chat() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const { state, me, messagesOf, userById, sendMessage, listingById, setOrderStatus } = useStore();
+  const { state, me, messagesOf, userById, postById, sendMessage } = useStore();
   const scroller = useRef<ScrollView>(null);
   const [draft, setDraft] = useState('');
 
@@ -33,17 +33,11 @@ export default function Chat() {
   };
 
   return (
-    <KeyboardAvoidingView
-      style={{ flex: 1 }}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-      keyboardVerticalOffset={0}
-    >
+    <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
       <Header
         back
-        title={other?.name ?? 'Chat'}
-        subtitle={
-          other?.role === 'supplier' ? SUPPLIER_LABEL[other.supplierType ?? 'bulk'] : 'Buyer'
-        }
+        title={other?.name || 'Chat'}
+        subtitle={other?.supplierType ? SUPPLIER_LABEL[other.supplierType] : undefined}
         right={<Chip label="Profile" onPress={() => router.push(`/business/${otherId}`)} />}
       />
 
@@ -54,7 +48,7 @@ export default function Chat() {
       >
         {messages.map((m) => {
           if (m.postId) {
-            const post = state.posts.find((p) => p.id === m.postId);
+            const post = postById(m.postId);
             if (!post) return null;
             return (
               <Card
@@ -62,13 +56,33 @@ export default function Chat() {
                 onPress={() => router.push(`/post/${post.id}`)}
                 style={{ padding: space.md, gap: space.sm }}
               >
-                <Label>Post</Label>
-                <Row style={{ gap: space.md }}>
+                <Row style={{ gap: space.md, alignItems: 'flex-start' }}>
                   <Photo uri={post.photos[0]} style={{ width: 64, height: 64 }} radius={10} />
-                  <View style={{ flex: 1 }}>
-                    <T size={13.5} numberOfLines={3} style={{ lineHeight: 18 }}>
-                      {post.caption}
+                  <View style={{ flex: 1, gap: 3 }}>
+                    <T size={13.5} numberOfLines={2} style={{ lineHeight: 18 }}>
+                      {post.caption || 'Post'}
                     </T>
+
+                    {/* If it is selling coffee, the price comes with it. */}
+                    {post.listing ? (
+                      <>
+                        <Row style={{ gap: 6 }}>
+                          <T size={14} weight="700" color={theme.accent}>
+                            {priceParts(post.listing.pricePerKg).perKg}
+                          </T>
+                          <T size={12.5} color={theme.inkSoft}>
+                            · {priceParts(post.listing.pricePerKg).perLb}
+                          </T>
+                        </Row>
+                        <T size={12} color={theme.muted}>
+                          {weightParts(post.listing.lotKg).kg} / {weightParts(post.listing.lotKg).lb}
+                        </T>
+                        <Chip
+                          label={post.listing.shippingIncluded ? 'Shipping included' : 'Shipping not included'}
+                          tone={post.listing.shippingIncluded ? 'good' : 'warn'}
+                        />
+                      </>
+                    ) : null}
                   </View>
                 </Row>
               </Card>
@@ -78,46 +92,33 @@ export default function Chat() {
           if (m.orderId) {
             const order = state.orders.find((o) => o.id === m.orderId);
             if (!order) return null;
-            const listing = listingById(order.listingId);
+            const post = postById(order.postId);
             const price = priceParts(order.lockedPricePerKg);
             const qty = weightParts(order.qtyKg);
-            const isCustomer = me.id === order.customerId;
+            const isBuyer = me.id === order.customerId;
 
             return (
               <Card key={m.id} style={{ gap: space.sm }}>
-                <Row style={{ justifyContent: 'space-between' }}>
-                  <Label>Order</Label>
-                  <Chip
-                    label={
-                      order.status === 'inquiry'
-                        ? 'Waiting'
-                        : order.status === 'agreed'
-                          ? 'Agreed'
-                          : order.status === 'completed'
-                            ? 'Completed'
-                            : 'Cancelled'
-                    }
-                    tone={order.status === 'completed' ? 'good' : order.status === 'cancelled' ? 'warn' : 'neutral'}
-                  />
-                </Row>
+                <Label>Order</Label>
 
-                <T size={16} weight="700">
-                  {listing?.title ?? 'Listing'}
-                </T>
+                <Row style={{ gap: space.md }}>
+                  <Photo uri={post?.photos[0]} style={{ width: 52, height: 52 }} radius={10} />
+                  <View style={{ flex: 1 }}>
+                    <T size={14} numberOfLines={2}>
+                      {post?.caption || 'Post'}
+                    </T>
+                  </View>
+                </Row>
 
                 <Row style={{ justifyContent: 'space-between' }}>
                   <View>
-                    <T size={12} color={theme.muted} weight="600">
-                      QUANTITY
-                    </T>
+                    <Label>Amount</Label>
                     <T size={14.5} weight="600">
                       {qty.kg} / {qty.lb}
                     </T>
                   </View>
                   <View style={{ alignItems: 'flex-end' }}>
-                    <T size={12} color={theme.muted} weight="600">
-                      PRICE
-                    </T>
+                    <Label>Price</Label>
                     <T size={14.5} weight="600">
                       {price.perKg} · {price.perLb}
                     </T>
@@ -140,11 +141,11 @@ export default function Chat() {
                   </T>
                 </Row>
 
-                {isCustomer ? (
+                {isBuyer ? (
                   <Row style={{ gap: space.sm }}>
-                    {order.status === 'completed' && !order.reviewed ? (
+                    {!order.reviewed ? (
                       <Btn
-                        title="Write a review"
+                        title="Review"
                         kind="soft"
                         onPress={() => router.push(`/review/${order.id}`)}
                         style={{ flex: 1, height: 42 }}
@@ -153,29 +154,11 @@ export default function Chat() {
                     <Btn
                       title="Report price"
                       kind="danger"
-                      onPress={() => router.push(`/report/${order.listingId}?orderId=${order.id}`)}
+                      onPress={() => router.push(`/report/${order.postId}?orderId=${order.id}`)}
                       style={{ flex: 1, height: 42 }}
                     />
                   </Row>
-                ) : (
-                  <Row style={{ gap: space.sm }}>
-                    {order.status === 'inquiry' ? (
-                      <Btn
-                        title="Confirm"
-                        onPress={() => setOrderStatus(order.id, 'agreed')}
-                        style={{ flex: 1, height: 42 }}
-                      />
-                    ) : null}
-                    {order.status === 'agreed' ? (
-                      <Btn
-                        title="Mark done"
-                        kind="soft"
-                        onPress={() => setOrderStatus(order.id, 'completed')}
-                        style={{ flex: 1, height: 42 }}
-                      />
-                    ) : null}
-                  </Row>
-                )}
+                ) : null}
               </Card>
             );
           }
@@ -220,6 +203,7 @@ export default function Chat() {
           onChangeText={setDraft}
           placeholder="Message"
           placeholderTextColor={theme.muted}
+          multiline
           style={{
             flex: 1,
             minWidth: 0,
@@ -234,7 +218,6 @@ export default function Chat() {
             fontSize: 15,
             color: theme.ink,
           }}
-          multiline
         />
         <Btn title="Send" onPress={send} disabled={!draft.trim()} style={{ height: 46, paddingHorizontal: space.lg }} />
       </View>

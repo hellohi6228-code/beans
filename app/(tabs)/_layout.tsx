@@ -11,7 +11,6 @@ export default function TabsLayout() {
         screenOptions={{ headerShown: false, sceneStyle: { backgroundColor: 'transparent' } }}
       >
         <Tabs.Screen name="home" />
-        <Tabs.Screen name="listings" />
         <Tabs.Screen name="messages" />
         <Tabs.Screen name="profile" />
       </Tabs>

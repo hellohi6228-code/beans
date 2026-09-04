@@ -1,7 +1,6 @@
 import { usePathname, useRouter } from 'expo-router';
 import React, { useRef, useState } from 'react';
 import { Animated, Dimensions, PanResponder, Pressable, View } from 'react-native';
-import { useStore } from '../store';
 import { radius, shadow, space, theme } from '../theme';
 import { T } from './ui';
 
@@ -12,7 +11,6 @@ const { width: W, height: H } = Dimensions.get('window');
 export function FloatingNav() {
   const router = useRouter();
   const path = usePathname();
-  const { me } = useStore();
   const [open, setOpen] = useState(false);
 
   const pos = useRef(new Animated.ValueXY({ x: W - SIZE - 20, y: H - SIZE - 100 })).current;
@@ -48,7 +46,7 @@ export function FloatingNav() {
 
   const items = [
     { label: 'Find beans', glyph: '🔍', href: '/home' },
-    ...(me?.role === 'supplier' ? [{ label: 'My listings', glyph: '🫘', href: '/listings' }] : []),
+    { label: 'New post', glyph: '➕', href: '/new-post' },
     { label: 'Messages', glyph: '💬', href: '/messages' },
     { label: 'Profile', glyph: '👤', href: '/profile' },
   ];
