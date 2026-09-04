@@ -1,9 +1,8 @@
 export type SupplierType = 'farmer' | 'bulk' | 'online_retail' | 'coffee_shop';
 
 /**
- * Whether an account also sells. Everyone buys — a farmer can buy from another
- * farmer, a coffee shop from a bulk seller — so `supplier` only means "this
- * account can publish listings too".
+ * Everyone starts as a customer. Tapping "I am also a supplier" flips this,
+ * which is the only thing that unlocks listing beans.
  */
 export type Role = 'customer' | 'supplier';
 
@@ -14,26 +13,20 @@ export const SUPPLIER_LABEL: Record<SupplierType, string> = {
   coffee_shop: 'Coffee shop',
 };
 
-export const SUPPLIER_BLURB: Record<SupplierType, string> = {
-  farmer: 'Grows and mills its own coffee',
-  bulk: 'Sells full bags and pallets',
-  online_retail: 'Ships roasted retail bags',
-  coffee_shop: 'Bricks-and-mortar shop selling beans',
-};
-
+/**
+ * One account, tied to the App Store / Play account on the device. There is no
+ * sign up and no sign out — the app opens straight into it.
+ */
 export type User = {
   id: string;
   role: Role;
-  /** Business name for suppliers, display name for customers. */
   name: string;
-  handle: string;
-  supplierType?: SupplierType;
-  avatar?: string;
-  cover?: string;
+  /** Free text under the business name. */
   bio: string;
-  location: string;
-  website?: string;
-  joinedAt: number;
+  supplierType?: SupplierType;
+  /** A real photo the user took or picked. */
+  avatar?: string;
+  createdAt: number;
 };
 
 export type Post = {
@@ -41,11 +34,7 @@ export type Post = {
   userId: string;
   photos: string[];
   caption: string;
-  kind: 'merchandise' | 'event' | 'update';
-  /**
-   * Something they sell, or an event they host — the post carries a chat button
-   * so anyone looking at it can ask about it directly.
-   */
+  /** Something they sell or an event they host — the photo gets a chat button. */
   contactable: boolean;
   createdAt: number;
 };
@@ -61,10 +50,6 @@ export type Listing = {
   /** The unit the supplier typed the numbers in; both are always displayed. */
   enteredUnit: 'kg' | 'lb';
   shippingIncluded: boolean;
-  origin: string;
-  process: string;
-  roast: string;
-  description: string;
   createdAt: number;
   active: boolean;
 };
@@ -100,10 +85,6 @@ export type Message = {
   createdAt: number;
 };
 
-/**
- * A direct message thread between any two accounts. Anyone can buy from anyone,
- * so a thread is not buyer-and-seller — it is just two people.
- */
 export type Thread = {
   id: string;
   participants: string[];

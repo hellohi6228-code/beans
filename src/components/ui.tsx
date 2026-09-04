@@ -13,7 +13,6 @@ import {
   View,
   ViewStyle,
 } from 'react-native';
-import { parseSeedPhoto } from '../data/photos';
 import { radius, shadow, space, theme } from '../theme';
 
 /* ------------------------------------------------------------------ text */
@@ -254,45 +253,16 @@ function hueFor(seed: string) {
   return HUES[n % HUES.length];
 }
 
-/**
- * The one image element in the app. A real photo (file:// from the camera or
- * library, or http) renders as an image; a `beans://` seed photo renders as a
- * generated tile so the sample content looks alive with no network; anything
- * missing falls back to a calm coloured tile.
- */
+/** A real photo, or an empty tile if there is not one yet. */
 export function Photo({
   uri,
-  seed = 'beans',
-  glyph = '☕',
   style,
   radius: r = radius.md,
 }: {
   uri?: string;
-  seed?: string;
-  glyph?: string;
   style?: ViewStyle;
   radius?: number;
 }) {
-  const generated = parseSeedPhoto(uri);
-
-  if (generated) {
-    return (
-      <LinearGradient
-        colors={[generated.a, generated.b]}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-        style={[{ borderRadius: r, alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }, style]}
-      >
-        <T size={34}>{generated.emoji}</T>
-        {generated.label ? (
-          <T size={10.5} color="rgba(22,35,46,0.5)" weight="600" style={{ marginTop: 4, paddingHorizontal: 8 }}>
-            {generated.label}
-          </T>
-        ) : null}
-      </LinearGradient>
-    );
-  }
-
   if (uri) {
     return (
       <Image
@@ -302,41 +272,10 @@ export function Photo({
       />
     );
   }
-
-  return (
-    <View
-      style={[
-        { borderRadius: r, backgroundColor: hueFor(seed), alignItems: 'center', justifyContent: 'center' },
-        style,
-      ]}
-    >
-      <T size={26}>{glyph}</T>
-    </View>
-  );
+  return <View style={[{ borderRadius: r, backgroundColor: theme.line }, style]} />;
 }
 
 export function Avatar({ uri, name, size = 44 }: { uri?: string; name: string; size?: number }) {
-  const generated = parseSeedPhoto(uri);
-
-  if (generated) {
-    return (
-      <LinearGradient
-        colors={[generated.a, generated.b]}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-        style={{
-          width: size,
-          height: size,
-          borderRadius: size / 2,
-          alignItems: 'center',
-          justifyContent: 'center',
-        }}
-      >
-        <T size={size * 0.45}>{generated.emoji}</T>
-      </LinearGradient>
-    );
-  }
-
   if (uri) {
     return <Image source={{ uri }} style={{ width: size, height: size, borderRadius: size / 2 }} />;
   }

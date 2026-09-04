@@ -1,21 +1,12 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import { BADGES, Badge, BadgeCtx, isEarned } from './badges';
-import {
-  seedListings,
-  seedMessages,
-  seedOrders,
-  seedPosts,
-  seedReviews,
-  seedThreads,
-  seedUsers,
-} from './seed';
-import { Listing, Message, Order, Post, Report, Review, Role, Thread, User } from './types';
+import { Listing, Message, Order, Post, Report, Review, SupplierType, Thread, User } from './types';
 import { Unit } from './units';
 
-const KEY = 'beans.state.v2';
+const KEY = 'beans.state.v3';
 
-/** What the customer types on the front page: how much, and where it is going. */
+/** What the front page asks: how much, and is shipping included. */
 export type SourcingRequest = {
   qty: number;
   unit: Unit;
@@ -24,7 +15,7 @@ export type SourcingRequest = {
   address: string;
 };
 
-type DB = {
+type Persisted = {
   users: User[];
   posts: Post[];
   listings: Listing[];
@@ -33,23 +24,21 @@ type DB = {
   messages: Message[];
   reviews: Review[];
   reports: Report[];
-};
-
-type Persisted = DB & {
-  sessionUserId: string | null;
+  /** The account on this device. Created on first launch, never signed out of. */
+  meId: string | null;
   request: SourcingRequest | null;
 };
 
-const initial: Persisted = {
-  users: seedUsers,
-  posts: seedPosts,
-  listings: seedListings,
-  orders: seedOrders,
-  threads: seedThreads,
-  messages: seedMessages,
-  reviews: seedReviews,
+const empty: Persisted = {
+  users: [],
+  posts: [],
+  listings: [],
+  orders: [],
+  threads: [],
+  messages: [],
+  reviews: [],
   reports: [],
-  sessionUserId: null,
+  meId: null,
   request: null,
 };
 
@@ -60,10 +49,9 @@ type Ctx = {
   state: Persisted;
   me: User | null;
 
-  signIn: (userId: string) => void;
-  signOut: () => void;
-  createAccount: (input: Omit<User, 'id' | 'joinedAt'>) => User;
   updateMe: (patch: Partial<User>) => void;
+  /** Flips the account to a supplier so it can list beans. */
+  becomeSupplier: (type: SupplierType) => void;
 
   setRequest: (r: SourcingRequest | null) => void;
 
@@ -76,17 +64,13 @@ type Ctx = {
   ordersOfCustomer: (customerId: string) => Order[];
   threadsOf: (userId: string) => Thread[];
   messagesOf: (threadId: string) => Message[];
-  reportsAgainst: (supplierId: string) => Report[];
 
   addListing: (input: Omit<Listing, 'id' | 'createdAt' | 'supplierId' | 'active'>) => Listing;
   removeListing: (id: string) => void;
   addPost: (input: Omit<Post, 'id' | 'createdAt' | 'userId'>) => Post;
+  removePost: (id: string) => void;
 
-  /** Finds the DM thread with someone, or starts one. Optionally pins a post into it. */
   openThread: (otherUserId: string, aboutPostId?: string) => string;
-  threadWith: (otherUserId: string) => Thread | undefined;
-
-  /** Opens (or reuses) the chat with the supplier and pins an order card into it. */
   startOrder: (listingId: string, qtyKg: number) => { threadId: string; orderId: string };
   sendMessage: (threadId: string, text: string) => void;
   setOrderStatus: (orderId: string, status: Order['status']) => void;
@@ -94,13 +78,13 @@ type Ctx = {
   addReview: (input: Omit<Review, 'id' | 'createdAt' | 'customerId'>) => void;
   addReport: (input: Omit<Report, 'id' | 'createdAt' | 'reporterId' | 'status'>) => void;
 
-  badgesFor: (customerId: string) => { badge: Badge; earned: boolean; have: number; need: number }[];
+  badgesFor: (userId: string) => { badge: Badge; earned: boolean; have: number; need: number }[];
 };
 
 const StoreCtx = createContext<Ctx | null>(null);
 
 export function StoreProvider({ children }: { children: React.ReactNode }) {
-  const [state, setState] = useState<Persisted>(initial);
+  const [state, setState] = useState<Persisted>(empty);
   const [hydrated, setHydrated] = useState(false);
 
   useEffect(() => {
@@ -108,14 +92,20 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     AsyncStorage.getItem(KEY)
       .then((raw) => {
         if (!alive) return;
+        let next = empty;
         if (raw) {
           try {
-            const parsed = JSON.parse(raw) as Persisted;
-            setState({ ...initial, ...parsed });
+            next = { ...empty, ...(JSON.parse(raw) as Persisted) };
           } catch {
-            // Corrupt cache — fall back to the seeded state.
+            // Unreadable cache — start clean.
           }
         }
+        // The device's account. There is no sign up: first launch creates it.
+        if (!next.meId || !next.users.some((u) => u.id === next.meId)) {
+          const account: User = { id: uid('u'), role: 'customer', name: '', bio: '', createdAt: Date.now() };
+          next = { ...next, users: [...next.users, account], meId: account.id };
+        }
+        setState(next);
       })
       .finally(() => alive && setHydrated(true));
     return () => {
@@ -128,10 +118,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     AsyncStorage.setItem(KEY, JSON.stringify(state)).catch(() => {});
   }, [state, hydrated]);
 
-  const me = useMemo(
-    () => state.users.find((u) => u.id === state.sessionUserId) ?? null,
-    [state.users, state.sessionUserId]
-  );
+  const me = useMemo(() => state.users.find((u) => u.id === state.meId) ?? null, [state.users, state.meId]);
 
   const userById = useCallback((id: string) => state.users.find((u) => u.id === id), [state.users]);
   const listingById = useCallback((id: string) => state.listings.find((l) => l.id === id), [state.listings]);
@@ -141,19 +128,13 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     state,
     me,
 
-    signIn: (userId) => setState((s) => ({ ...s, sessionUserId: userId })),
-    signOut: () => setState((s) => ({ ...s, sessionUserId: null, request: null })),
-
-    createAccount: (input) => {
-      const user: User = { ...input, id: uid('u'), joinedAt: Date.now() };
-      setState((s) => ({ ...s, users: [...s.users, user], sessionUserId: user.id }));
-      return user;
-    },
-
     updateMe: (patch) =>
+      setState((s) => ({ ...s, users: s.users.map((u) => (u.id === s.meId ? { ...u, ...patch } : u)) })),
+
+    becomeSupplier: (type) =>
       setState((s) => ({
         ...s,
-        users: s.users.map((u) => (u.id === s.sessionUserId ? { ...u, ...patch } : u)),
+        users: s.users.map((u) => (u.id === s.meId ? { ...u, role: 'supplier', supplierType: type } : u)),
       })),
 
     setRequest: (request) => setState((s) => ({ ...s, request })),
@@ -161,7 +142,9 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     userById,
     listingById,
     listingsOf: (supplierId) =>
-      state.listings.filter((l) => l.supplierId === supplierId && l.active).sort((a, b) => b.createdAt - a.createdAt),
+      state.listings
+        .filter((l) => l.supplierId === supplierId && l.active)
+        .sort((a, b) => b.createdAt - a.createdAt),
     postsOf: (userId) => state.posts.filter((p) => p.userId === userId).sort((a, b) => b.createdAt - a.createdAt),
     reviewsOfSupplier: (supplierId) =>
       state.reviews.filter((r) => r.supplierId === supplierId).sort((a, b) => b.createdAt - a.createdAt),
@@ -176,13 +159,12 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       state.threads.filter((t) => t.participants.includes(userId)).sort((a, b) => b.lastAt - a.lastAt),
     messagesOf: (threadId) =>
       state.messages.filter((m) => m.threadId === threadId).sort((a, b) => a.createdAt - b.createdAt),
-    reportsAgainst: (supplierId) => state.reports.filter((r) => r.supplierId === supplierId),
 
     addListing: (input) => {
       const listing: Listing = {
         ...input,
         id: uid('l'),
-        supplierId: state.sessionUserId ?? '',
+        supplierId: state.meId ?? '',
         createdAt: Date.now(),
         active: true,
       };
@@ -194,25 +176,26 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       setState((s) => ({ ...s, listings: s.listings.map((l) => (l.id === id ? { ...l, active: false } : l)) })),
 
     addPost: (input) => {
-      const post: Post = { ...input, id: uid('p'), userId: state.sessionUserId ?? '', createdAt: Date.now() };
+      const post: Post = { ...input, id: uid('p'), userId: state.meId ?? '', createdAt: Date.now() };
       setState((s) => ({ ...s, posts: [post, ...s.posts] }));
       return post;
     },
 
+    removePost: (id) => setState((s) => ({ ...s, posts: s.posts.filter((p) => p.id !== id) })),
+
     openThread: (otherUserId, aboutPostId) => {
-      const me_ = state.sessionUserId!;
+      const meId = state.meId!;
       const existing = state.threads.find(
-        (t) => t.participants.includes(me_) && t.participants.includes(otherUserId)
+        (t) => t.participants.includes(meId) && t.participants.includes(otherUserId)
       );
       const threadId = existing?.id ?? uid('th');
       const now = Date.now();
 
-      // Pin the post that prompted the message, so the other side has context.
       const alreadyPinned =
         aboutPostId && state.messages.some((m) => m.threadId === threadId && m.postId === aboutPostId);
       const card: Message | null =
         aboutPostId && !alreadyPinned
-          ? { id: uid('m'), threadId, senderId: me_, postId: aboutPostId, system: true, createdAt: now }
+          ? { id: uid('m'), threadId, senderId: meId, postId: aboutPostId, system: true, createdAt: now }
           : null;
 
       if (!existing || card) {
@@ -220,7 +203,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
           ...s,
           threads: existing
             ? s.threads.map((t) => (t.id === threadId ? { ...t, lastAt: now } : t))
-            : [{ id: threadId, participants: [me_, otherUserId], createdAt: now, lastAt: now }, ...s.threads],
+            : [{ id: threadId, participants: [meId, otherUserId], createdAt: now, lastAt: now }, ...s.threads],
           messages: card ? [...s.messages, card] : s.messages,
         }));
       }
@@ -228,14 +211,9 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       return threadId;
     },
 
-    threadWith: (otherUserId) =>
-      state.threads.find(
-        (t) => t.participants.includes(state.sessionUserId ?? '') && t.participants.includes(otherUserId)
-      ),
-
     startOrder: (listingId, qtyKg) => {
       const listing = state.listings.find((l) => l.id === listingId)!;
-      const customerId = state.sessionUserId!;
+      const customerId = state.meId!;
       const existing = state.threads.find(
         (t) => t.participants.includes(customerId) && t.participants.includes(listing.supplierId)
       );
@@ -254,7 +232,14 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
         createdAt: now,
         reviewed: false,
       };
-      const card: Message = { id: uid('m'), threadId, senderId: customerId, orderId: order.id, system: true, createdAt: now };
+      const card: Message = {
+        id: uid('m'),
+        threadId,
+        senderId: customerId,
+        orderId: order.id,
+        system: true,
+        createdAt: now,
+      };
 
       setState((s) => ({
         ...s,
@@ -273,7 +258,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
 
     sendMessage: (threadId, text) => {
       const now = Date.now();
-      const msg: Message = { id: uid('m'), threadId, senderId: state.sessionUserId ?? '', text, createdAt: now };
+      const msg: Message = { id: uid('m'), threadId, senderId: state.meId ?? '', text, createdAt: now };
       setState((s) => ({
         ...s,
         messages: [...s.messages, msg],
@@ -285,7 +270,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       setState((s) => ({ ...s, orders: s.orders.map((o) => (o.id === orderId ? { ...o, status } : o)) })),
 
     addReview: (input) => {
-      const review: Review = { ...input, id: uid('r'), customerId: state.sessionUserId ?? '', createdAt: Date.now() };
+      const review: Review = { ...input, id: uid('r'), customerId: state.meId ?? '', createdAt: Date.now() };
       setState((s) => ({
         ...s,
         reviews: [review, ...s.reviews],
@@ -297,19 +282,18 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       const report: Report = {
         ...input,
         id: uid('rep'),
-        reporterId: state.sessionUserId ?? '',
+        reporterId: state.meId ?? '',
         status: 'under_review',
         createdAt: Date.now(),
       };
       setState((s) => ({ ...s, reports: [report, ...s.reports] }));
     },
 
-    badgesFor: (customerId) => {
+    badgesFor: (userId) => {
       const ctx: BadgeCtx = {
-        orders: state.orders.filter((o) => o.customerId === customerId),
-        reviews: state.reviews.filter((r) => r.customerId === customerId),
+        orders: state.orders.filter((o) => o.customerId === userId),
+        reviews: state.reviews.filter((r) => r.customerId === userId),
         supplierOf: (id) => state.users.find((u) => u.id === id),
-        originOf: (listingId) => state.listings.find((l) => l.id === listingId)?.origin,
       };
       return BADGES.map((badge) => {
         const { have, need } = badge.progress(ctx);
@@ -326,5 +310,3 @@ export function useStore() {
   if (!ctx) throw new Error('useStore must be used inside <StoreProvider>');
   return ctx;
 }
-
-export type { Role };

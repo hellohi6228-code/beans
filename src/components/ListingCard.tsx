@@ -13,7 +13,7 @@ export function ListingCard({
 }: {
   listing: Listing;
   supplier?: User;
-  /** When the customer asked for a specific amount, show what that costs. */
+  /** When the buyer asked for an amount, show what that costs. */
   qtyKg?: number;
 }) {
   const router = useRouter();
@@ -24,7 +24,7 @@ export function ListingCard({
   return (
     <Card onPress={() => router.push(`/listing/${listing.id}`)} style={{ padding: space.md }}>
       <Row style={{ alignItems: 'flex-start', gap: space.md }}>
-        <Photo uri={listing.photos[0]} seed={listing.id} style={{ width: 92, height: 92 }} />
+        <Photo uri={listing.photos[0]} style={{ width: 92, height: 92 }} />
 
         <View style={{ flex: 1, gap: 4 }}>
           <T size={15.5} weight="700" numberOfLines={2}>
@@ -33,7 +33,8 @@ export function ListingCard({
 
           {supplier ? (
             <T size={12.5} color={theme.muted} numberOfLines={1}>
-              {supplier.name} · {SUPPLIER_LABEL[supplier.supplierType ?? 'bulk']}
+              {supplier.name}
+              {supplier.supplierType ? ` · ${SUPPLIER_LABEL[supplier.supplierType]}` : ''}
             </T>
           ) : null}
 
@@ -47,7 +48,7 @@ export function ListingCard({
           </Row>
 
           <T size={12.5} color={theme.inkSoft}>
-            Lot {lot.kg} / {lot.lb} · {listing.origin}
+            {lot.kg} / {lot.lb}
           </T>
 
           <Row style={{ gap: 6, marginTop: 4, flexWrap: 'wrap' }}>
@@ -55,9 +56,7 @@ export function ListingCard({
               label={listing.shippingIncluded ? 'Shipping included' : 'Shipping not included'}
               tone={listing.shippingIncluded ? 'good' : 'warn'}
             />
-            {askKg ? (
-              <Chip label={`${money(listing.pricePerKg * askKg)} for your ${weightParts(askKg).kg}`} tone="gold" />
-            ) : null}
+            {askKg ? <Chip label={`${money(listing.pricePerKg * askKg)} for you`} tone="gold" /> : null}
           </Row>
         </View>
       </Row>

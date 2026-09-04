@@ -14,16 +14,12 @@ export type BadgeCtx = {
   orders: Order[];
   reviews: Review[];
   supplierOf: (id: string) => User | undefined;
-  originOf: (listingId: string) => string | undefined;
 };
 
 const done = (ctx: BadgeCtx) => ctx.orders.filter((o) => o.status === 'completed' || o.status === 'agreed');
 
 const typeCount = (ctx: BadgeCtx, t: SupplierType) =>
   done(ctx).filter((o) => ctx.supplierOf(o.supplierId)?.supplierType === t).length;
-
-const origins = (ctx: BadgeCtx) =>
-  new Set(done(ctx).map((o) => ctx.originOf(o.listingId)).filter(Boolean) as string[]);
 
 export const BADGES: Badge[] = [
   {
@@ -116,22 +112,6 @@ export const BADGES: Badge[] = [
       have: (['farmer', 'bulk', 'online_retail', 'coffee_shop'] as SupplierType[]).filter((t) => typeCount(c, t) > 0).length,
       need: 4,
     }),
-  },
-  {
-    id: 'passport',
-    name: 'Passport',
-    glyph: '🗺️',
-    tier: 'silver',
-    blurb: '3 origins',
-    progress: (c) => ({ have: Math.min(origins(c).size, 3), need: 3 }),
-  },
-  {
-    id: 'globetrotter',
-    name: 'Globetrotter',
-    glyph: '🌍',
-    tier: 'gold',
-    blurb: '6 origins',
-    progress: (c) => ({ have: Math.min(origins(c).size, 6), need: 6 }),
   },
   {
     id: 'heavy-lifter',

@@ -43,22 +43,18 @@ export default function Messages() {
             return (
               <Card key={t.id} onPress={() => router.push(`/chat/${t.id}`)} style={{ padding: space.md }}>
                 <Row style={{ gap: space.md }}>
-                  <Avatar uri={other?.avatar} name={other?.name ?? '?'} />
+                  <Avatar uri={other?.avatar} name={other?.name || '?'} />
                   <View style={{ flex: 1 }}>
                     <Row style={{ justifyContent: 'space-between' }}>
                       <T size={15} weight="600" numberOfLines={1}>
-                        {other?.name ?? 'Beans user'}
+                        {other?.name || 'Beans user'}
                       </T>
                       <T size={12} color={theme.muted}>
                         {ago(t.lastAt)}
                       </T>
                     </Row>
                     <T size={13} color={theme.muted} numberOfLines={1}>
-                      {last?.orderId
-                        ? 'Order enquiry'
-                        : last?.postId
-                          ? 'Asked about a post'
-                          : (last?.text ?? 'Say hello')}
+                      {last?.orderId ? 'Order' : last?.postId ? 'Asked about a post' : (last?.text ?? '')}
                     </T>
                   </View>
                 </Row>

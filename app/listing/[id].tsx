@@ -3,21 +3,7 @@ import React, { useState } from 'react';
 import { Dimensions, ScrollView, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Header } from '../../src/components/Header';
-import {
-  Avatar,
-  Btn,
-  Card,
-  Chip,
-  Divider,
-  Field,
-  Label,
-  Photo,
-  Row,
-  Segmented,
-  Stars,
-  Sub,
-  T,
-} from '../../src/components/ui';
+import { Avatar, Btn, Card, Chip, Divider, Field, Label, Photo, Row, Segmented, Stars, T } from '../../src/components/ui';
 import { useStore } from '../../src/store';
 import { space, theme } from '../../src/theme';
 import { SUPPLIER_LABEL } from '../../src/types';
@@ -29,7 +15,7 @@ export default function ListingDetail() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const { listingById, userById, ratingOf, reviewsOfSupplier, startOrder, me, state } = useStore();
+  const { listingById, userById, ratingOf, startOrder, me, state } = useStore();
 
   const listing = listingById(String(id));
   const supplier = listing ? userById(listing.supplierId) : undefined;
@@ -37,28 +23,22 @@ export default function ListingDetail() {
   const [unit, setUnit] = useState<Unit>(state.request?.unit ?? 'kg');
   const [qty, setQty] = useState(() => {
     if (!listing) return '';
-    const wanted = state.request?.qtyKg ?? listing.lotKg;
-    const kg = Math.min(wanted, listing.lotKg);
+    const kg = Math.min(state.request?.qtyKg ?? listing.lotKg, listing.lotKg);
     const u = state.request?.unit ?? 'kg';
     return String(Number((u === 'kg' ? kg : kg * 2.20462262).toFixed(2)));
   });
 
-  if (!listing || !supplier) {
-    return <Header back title="Not found" />;
-  }
+  if (!listing || !supplier) return <Header back title="Not found" />;
 
   const price = priceParts(listing.pricePerKg);
   const lot = weightParts(listing.lotKg);
   const rating = ratingOf(supplier.id);
-  const reviews = reviewsOfSupplier(supplier.id).slice(0, 2);
 
   const parsed = parseFloat(qty.replace(',', '.'));
   const qtyKg = isFinite(parsed) && parsed > 0 ? toKg(parsed, unit) : 0;
   const overLot = qtyKg > listing.lotKg + 1e-9;
-  // Anyone can buy — the only person who cannot is whoever posted the listing.
   const isMine = me?.id === listing.supplierId;
   const canOrder = !!me && !isMine && qtyKg > 0 && !overLot;
-  const total = listing.pricePerKg * qtyKg;
 
   const order = () => {
     const { threadId } = startOrder(listing.id, qtyKg);
@@ -70,19 +50,17 @@ export default function ListingDetail() {
       <Header back title={listing.title} subtitle={supplier.name} />
 
       <ScrollView
-        contentContainerStyle={{ paddingHorizontal: space.lg, paddingBottom: insets.bottom + space.xxl, gap: space.md }}
+        contentContainerStyle={{ paddingHorizontal: space.lg, paddingBottom: insets.bottom + 120, gap: space.md }}
       >
-        {/* 1–3 photos of the beans */}
-        <ScrollView horizontal pagingEnabled showsHorizontalScrollIndicator={false} style={{ marginHorizontal: -space.lg }}>
+        <ScrollView
+          horizontal
+          pagingEnabled
+          showsHorizontalScrollIndicator={false}
+          style={{ marginHorizontal: -space.lg }}
+        >
           <View style={{ flexDirection: 'row', gap: space.sm, paddingHorizontal: space.lg }}>
-            {(listing.photos.length ? listing.photos : [undefined]).map((uri, i) => (
-              <Photo
-                key={i}
-                uri={uri}
-                seed={listing.id + i}
-                glyph="🫘"
-                style={{ width: W - space.lg * 2, height: 230 }}
-              />
+            {listing.photos.map((uri, i) => (
+              <Photo key={i} uri={uri} style={{ width: W - space.lg * 2, height: 230 }} />
             ))}
           </View>
         </ScrollView>
@@ -92,15 +70,10 @@ export default function ListingDetail() {
             {listing.title}
           </T>
 
-          <Row style={{ gap: space.sm, flexWrap: 'wrap' }}>
-            <Chip label={listing.origin} />
-            <Chip label={listing.process} />
-            <Chip label={listing.roast} />
-            <Chip
-              label={listing.shippingIncluded ? 'Shipping included' : 'Shipping not included'}
-              tone={listing.shippingIncluded ? 'good' : 'warn'}
-            />
-          </Row>
+          <Chip
+            label={listing.shippingIncluded ? 'Shipping included' : 'Shipping not included'}
+            tone={listing.shippingIncluded ? 'good' : 'warn'}
+          />
 
           <Divider />
 
@@ -115,7 +88,7 @@ export default function ListingDetail() {
               </T>
             </View>
             <View style={{ alignItems: 'flex-end' }}>
-              <Label>Lot size</Label>
+              <Label>Amount</Label>
               <T size={22} weight="800">
                 {lot.kg}
               </T>
@@ -124,32 +97,21 @@ export default function ListingDetail() {
               </T>
             </View>
           </Row>
-
-          <Divider />
-
-          <Sub>{listing.description}</Sub>
-
         </Card>
 
-        {/* Supplier */}
         <Card onPress={() => router.push(`/business/${supplier.id}`)} style={{ padding: space.md }}>
           <Row style={{ gap: space.md }}>
-            <Avatar uri={supplier.avatar} name={supplier.name} />
+            <Avatar uri={supplier.avatar} name={supplier.name || '?'} />
             <View style={{ flex: 1 }}>
               <T size={15} weight="700">
                 {supplier.name}
               </T>
-              <T size={12.5} color={theme.muted}>
-                {SUPPLIER_LABEL[supplier.supplierType ?? 'bulk']} · {supplier.location}
-              </T>
-              {rating.count ? (
-                <Row style={{ gap: 6, marginTop: 2 }}>
-                  <Stars value={rating.avg} />
-                  <T size={12} color={theme.muted}>
-                    {rating.avg.toFixed(1)} · {rating.count} {rating.count === 1 ? 'review' : 'reviews'}
-                  </T>
-                </Row>
+              {supplier.supplierType ? (
+                <T size={12.5} color={theme.muted}>
+                  {SUPPLIER_LABEL[supplier.supplierType]}
+                </T>
               ) : null}
+              {rating.count ? <Stars value={rating.avg} /> : null}
             </View>
             <T size={18} color={theme.muted}>
               ›
@@ -157,7 +119,6 @@ export default function ListingDetail() {
           </Row>
         </Card>
 
-        {/* Order */}
         {me && !isMine ? (
           <Card style={{ gap: space.md }}>
             <Label>How much</Label>
@@ -177,63 +138,26 @@ export default function ListingDetail() {
 
             <T size={13} color={overLot ? theme.warn : theme.muted}>
               {overLot
-                ? `Only ${lot.kg} / ${lot.lb} available in this lot.`
+                ? `Only ${lot.kg} / ${lot.lb} available.`
                 : qtyKg > 0
                   ? `${weightParts(qtyKg).kg} / ${weightParts(qtyKg).lb}`
-                  : 'Enter an amount.'}
+                  : ''}
             </T>
 
             <Divider />
 
             <Row style={{ justifyContent: 'space-between' }}>
-              <View>
-                <Label>Total</Label>
-                <T size={12.5} color={theme.muted}>
-                  {listing.shippingIncluded ? 'Shipping included' : 'Plus shipping'}
-                </T>
-              </View>
+              <Label>Total</Label>
               <T size={26} weight="800">
-                {money(total)}
+                {money(listing.pricePerKg * qtyKg)}
               </T>
             </Row>
 
             <Btn title="Order" onPress={order} disabled={!canOrder} />
           </Card>
-        ) : isMine ? (
-          <Card style={{ padding: space.md }}>
-            <T size={14} weight="700">
-              This is your own listing
-            </T>
-          </Card>
         ) : null}
 
-        {/* Reviews */}
-        {reviews.length ? (
-          <>
-            <Label>Reviews</Label>
-            {reviews.map((r) => {
-              const author = userById(r.customerId);
-              return (
-                <Card key={r.id} style={{ padding: space.md, gap: 4 }}>
-                  <Row style={{ gap: space.sm }}>
-                    <Avatar name={author?.name ?? '?'} uri={author?.avatar} size={30} />
-                    <T size={13.5} weight="600">
-                      {author?.name ?? 'Buyer'}
-                    </T>
-                    <Stars value={r.rating} />
-                  </Row>
-                  <Sub>{r.text}</Sub>
-                </Card>
-              );
-            })}
-          </>
-        ) : null}
-
-        <Btn
-          title="Report price"
-          kind="danger"
-          onPress={() => router.push(`/report/${listing.id}`)}
-        />
+        <Btn title="Report price" kind="danger" onPress={() => router.push(`/report/${listing.id}`)} />
       </ScrollView>
     </>
   );

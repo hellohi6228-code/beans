@@ -8,49 +8,44 @@ import { Avatar, Btn, Card, Chip, Empty, Label, Row, Stars, Sub, T } from '../..
 import { useStore } from '../../src/store';
 import { space, theme } from '../../src/theme';
 import { SUPPLIER_LABEL } from '../../src/types';
+import { money, weightParts } from '../../src/units';
 
 const W = Dimensions.get('window').width;
 const TILE = (W - space.lg * 2 - space.xs * 2) / 3;
+const BADGE = (W - space.lg * 2 - space.sm) / 2;
 
 export default function Profile() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const { me, postsOf, listingsOf, ratingOf, reportsAgainst, badgesFor, signOut } = useStore();
+  const { me, postsOf, ratingOf, badgesFor, ordersOfCustomer, listingById, userById } = useStore();
   if (!me) return null;
 
-  const isSupplier = me.role === 'supplier';
   const posts = postsOf(me.id);
-  const listings = isSupplier ? listingsOf(me.id) : [];
   const rating = ratingOf(me.id);
-  const reports = isSupplier ? reportsAgainst(me.id) : [];
-  // Everyone buys, so everyone has a badge collection.
-  const earned = badgesFor(me.id).filter((b) => b.earned);
+  const badges = badgesFor(me.id);
+  const earned = badges.filter((b) => b.earned);
+  const orders = ordersOfCustomer(me.id);
 
   return (
     <>
-      <Header
-        title="Profile"
-        right={<Chip label="Edit" onPress={() => router.push('/edit-profile')} />}
-      />
+      <Header title="Profile" right={<Chip label="Edit" onPress={() => router.push('/edit-profile')} />} />
 
       <ScrollView
         contentContainerStyle={{ paddingHorizontal: space.lg, paddingBottom: insets.bottom + 120, gap: space.md }}
       >
         <Card style={{ gap: space.md }}>
           <Row style={{ gap: space.lg }}>
-            <Avatar uri={me.avatar} name={me.name} size={72} />
+            <Avatar uri={me.avatar} name={me.name || 'You'} size={72} />
             <View style={{ flex: 1, gap: 2 }}>
               <T size={18} weight="700">
-                {me.name}
+                {me.name || 'Add your name'}
               </T>
-              <T size={13} color={theme.muted}>
-                @{me.handle}
-              </T>
-              <T size={13} color={theme.muted}>
-                {isSupplier ? SUPPLIER_LABEL[me.supplierType ?? 'bulk'] : 'Buyer'}
-                {me.location ? ` · ${me.location}` : ''}
-              </T>
-              {isSupplier && rating.count ? (
+              {me.role === 'supplier' ? (
+                <T size={13} color={theme.muted}>
+                  {SUPPLIER_LABEL[me.supplierType ?? 'bulk']}
+                </T>
+              ) : null}
+              {rating.count ? (
                 <Row style={{ gap: 6 }}>
                   <Stars value={rating.avg} />
                   <T size={12.5} color={theme.muted}>
@@ -61,77 +56,20 @@ export default function Profile() {
             </View>
           </Row>
 
-          {me.bio ? <Sub>{me.bio}</Sub> : <Sub>No bio yet.</Sub>}
+          {me.bio ? <Sub>{me.bio}</Sub> : null}
 
           <Row style={{ gap: space.sm }}>
             <Btn title="New post" kind="soft" onPress={() => router.push('/new-post')} style={{ flex: 1 }} />
-            {isSupplier ? (
+            {me.role === 'supplier' ? (
               <Btn title="New listing" onPress={() => router.push('/new-listing')} style={{ flex: 1 }} />
-            ) : (
-              <Btn
-                title="View as others"
-                kind="ghost"
-                onPress={() => router.push(`/business/${me.id}`)}
-                style={{ flex: 1 }}
-              />
-            )}
+            ) : null}
           </Row>
         </Card>
 
-        {earned.length ? (
-          <Card style={{ gap: space.sm }}>
-            <Label>Badges</Label>
-            <Row style={{ gap: 6, flexWrap: 'wrap' }}>
-              {earned.map((b) => (
-                <Chip key={b.badge.id} label={`${b.badge.glyph} ${b.badge.name}`} tone="gold" />
-              ))}
-            </Row>
-          </Card>
-        ) : null}
-
-        {isSupplier ? (
-          <Card
-            onPress={() => router.push('/reports')}
-            style={{
-              padding: space.md,
-              backgroundColor: reports.length ? theme.warnSoft : theme.card,
-              borderColor: reports.length ? theme.warnSoft : 'rgba(255,255,255,0.75)',
-            }}
-          >
-            <Row style={{ justifyContent: 'space-between' }}>
-              <View style={{ flex: 1 }}>
-                <T size={15} weight="700" color={reports.length ? theme.warn : theme.ink}>
-                  Price reports
-                </T>
-                <T size={12.5} color={theme.muted}>
-                  {reports.length ? `${reports.length} open` : 'None'}
-                </T>
-              </View>
-              <T size={18} color={theme.muted}>
-                ›
-              </T>
-            </Row>
-          </Card>
-        ) : null}
-
-        {isSupplier ? (
-          <>
-            <Label>{listings.length} active listings</Label>
-            {listings.length === 0 ? (
-              <Card>
-                <Sub>Nothing listed.</Sub>
-              </Card>
-            ) : null}
-          </>
-        ) : null}
-
-        <Label>Posts</Label>
         {posts.length === 0 ? (
-          <Card>
-            <Empty
-              glyph="📷"
-              title="Nothing posted yet"
-            />
+          <Card style={{ gap: space.md }}>
+            <Empty glyph="📷" title="No posts yet" />
+            <Btn title="Take a photo" onPress={() => router.push('/new-post')} />
           </Card>
         ) : (
           <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: space.xs }}>
@@ -141,14 +79,85 @@ export default function Profile() {
           </View>
         )}
 
-        <Btn
-          title="Sign out"
-          kind="ghost"
-          onPress={() => {
-            signOut();
-            router.replace('/welcome');
-          }}
-        />
+        <Label>
+          Badges {earned.length}/{badges.length}
+        </Label>
+        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: space.sm }}>
+          {badges.map(({ badge, earned: got, have, need }) => (
+            <Card
+              key={badge.id}
+              style={{
+                width: BADGE,
+                padding: space.md,
+                gap: 3,
+                opacity: got ? 1 : 0.7,
+                backgroundColor: got ? theme.goldSoft : theme.card,
+                borderColor: got ? '#EBD9AF' : 'rgba(255,255,255,0.75)',
+              }}
+            >
+              <T size={24} style={{ opacity: got ? 1 : 0.35 }}>
+                {badge.glyph}
+              </T>
+              <T size={14} weight="700">
+                {badge.name}
+              </T>
+              <T size={11.5} color={theme.muted}>
+                {badge.blurb}
+              </T>
+              {!got ? (
+                <View style={{ marginTop: 3, gap: 3 }}>
+                  <View style={{ height: 4, borderRadius: 2, backgroundColor: theme.line, overflow: 'hidden' }}>
+                    <View
+                      style={{
+                        width: `${Math.min(have / need, 1) * 100}%`,
+                        height: 4,
+                        backgroundColor: theme.accent,
+                      }}
+                    />
+                  </View>
+                  <T size={11} color={theme.muted}>
+                    {have} / {need}
+                  </T>
+                </View>
+              ) : null}
+            </Card>
+          ))}
+        </View>
+
+        {orders.length ? (
+          <>
+            <Label>Orders</Label>
+            {orders.map((o) => {
+              const listing = listingById(o.listingId);
+              const supplier = userById(o.supplierId);
+              return (
+                <Card key={o.id} style={{ padding: space.md, gap: 4 }}>
+                  <Row style={{ justifyContent: 'space-between' }}>
+                    <T size={15} weight="700" numberOfLines={1} style={{ flex: 1 }}>
+                      {listing?.title ?? 'Listing'}
+                    </T>
+                    <T size={15} weight="700">
+                      {money(o.lockedTotal)}
+                    </T>
+                  </Row>
+                  <T size={12.5} color={theme.muted}>
+                    {supplier?.name} · {weightParts(o.qtyKg).kg} / {weightParts(o.qtyKg).lb}
+                  </T>
+                  {!o.reviewed ? (
+                    <Btn
+                      title="Write a review"
+                      kind="soft"
+                      onPress={() => router.push(`/review/${o.id}`)}
+                      style={{ height: 42, marginTop: 4 }}
+                    />
+                  ) : (
+                    <Chip label="Reviewed" tone="gold" />
+                  )}
+                </Card>
+              );
+            })}
+          </>
+        ) : null}
       </ScrollView>
     </>
   );

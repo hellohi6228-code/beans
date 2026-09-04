@@ -56,31 +56,19 @@ export default function Chat() {
           if (m.postId) {
             const post = state.posts.find((p) => p.id === m.postId);
             if (!post) return null;
-            const author = userById(post.userId);
             return (
-              <Card key={m.id} onPress={() => router.push(`/post/${post.id}`)} style={{ padding: space.md, gap: space.sm }}>
-                <Label>{post.kind === 'event' ? 'Event' : 'Post'}</Label>
+              <Card
+                key={m.id}
+                onPress={() => router.push(`/post/${post.id}`)}
+                style={{ padding: space.md, gap: space.sm }}
+              >
+                <Label>Post</Label>
                 <Row style={{ gap: space.md }}>
-                  <Photo
-                    uri={post.photos[0]}
-                    seed={post.id}
-                    glyph={post.kind === 'event' ? '📅' : post.kind === 'merchandise' ? '🛍️' : '📷'}
-                    style={{ width: 64, height: 64 }}
-                    radius={10}
-                  />
-                  <View style={{ flex: 1, gap: 4 }}>
+                  <Photo uri={post.photos[0]} style={{ width: 64, height: 64 }} radius={10} />
+                  <View style={{ flex: 1 }}>
                     <T size={13.5} numberOfLines={3} style={{ lineHeight: 18 }}>
                       {post.caption}
                     </T>
-                    <Row style={{ gap: 6 }}>
-                      <Chip
-                        label={post.kind === 'event' ? 'Event' : post.contactable ? 'For sale' : 'Post'}
-                        tone={post.kind === 'event' ? 'gold' : 'neutral'}
-                      />
-                      <T size={11.5} color={theme.muted}>
-                        {author?.name}
-                      </T>
-                    </Row>
                   </View>
                 </Row>
               </Card>

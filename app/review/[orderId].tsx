@@ -76,7 +76,7 @@ export default function WriteReview() {
             </Card>
           ) : null}
 
-          <Btn title="My collection" onPress={() => router.replace('/collection')} />
+          <Btn title="My profile" onPress={() => router.replace('/profile')} />
           <Btn title="Done" kind="ghost" onPress={() => router.replace('/home')} />
         </ScrollView>
       </>

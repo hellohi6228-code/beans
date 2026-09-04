@@ -15,5 +15,5 @@ export default function Index() {
     );
   }
 
-  return <Redirect href={me ? '/home' : '/welcome'} />;
+  return <Redirect href="/home" />;
 }
