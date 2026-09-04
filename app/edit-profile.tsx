@@ -1,5 +1,5 @@
-import { useRouter } from 'expo-router';
-import React, { useState } from 'react';
+import { useFocusEffect, useRouter } from 'expo-router';
+import React, { useCallback, useState } from 'react';
 import { KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { Header } from '../src/components/Header';
 import { PhotoPicker } from '../src/components/PhotoPicker';
@@ -27,6 +27,17 @@ export default function EditProfile() {
   const [avatar, setAvatar] = useState<string[]>(me?.avatar ? [me.avatar] : []);
   const [choice, setChoice] = useState<Choice>(me?.role === 'supplier' ? (me.supplierType ?? 'farmer') : 'none');
   const [open, setOpen] = useState(false);
+
+  // The screen stays mounted, so re-read the account every time it is opened.
+  useFocusEffect(
+    useCallback(() => {
+      setName(me?.name ?? '');
+      setBio(me?.bio ?? '');
+      setAvatar(me?.avatar ? [me.avatar] : []);
+      setChoice(me?.role === 'supplier' ? (me.supplierType ?? 'farmer') : 'none');
+      setOpen(false);
+    }, [me?.id, me?.name, me?.bio, me?.avatar, me?.role, me?.supplierType])
+  );
 
   if (!me) return null;
 

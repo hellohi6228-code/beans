@@ -118,7 +118,20 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     me,
 
     updateMe: (patch) =>
-      setState((s) => ({ ...s, users: s.users.map((u) => (u.id === s.meId ? { ...u, ...patch } : u)) })),
+      setState((s) => {
+        // Stopping selling switches every listing off. The items stay — turning
+        // supplying back on leaves them all off until each is switched on again.
+        const stopping = patch.role === 'customer';
+        return {
+          ...s,
+          users: s.users.map((u) => (u.id === s.meId ? { ...u, ...patch } : u)),
+          posts: stopping
+            ? s.posts.map((p) =>
+                p.userId === s.meId && p.listing ? { ...p, listing: { ...p.listing, active: false } } : p
+              )
+            : s.posts,
+        };
+      }),
 
     becomeSupplier: (type) =>
       setState((s) => ({
