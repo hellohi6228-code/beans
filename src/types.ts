@@ -23,17 +23,13 @@ export type User = {
 export type ListingPart = {
   pricePerKg: number;
   lotKg: number;
-  /** The unit it was typed in; both are always displayed. */
   enteredUnit: 'kg' | 'lb';
   shippingIncluded: boolean;
-  /** The seller can switch a listing off without deleting the post. */
+  /** Switched off: no icon, no messaging. */
   active: boolean;
 };
 
-/**
- * Everything is a post. A post that is selling carries a listing and shows an
- * icon in the top-left corner.
- */
+/** Everything is a post. A post that is selling carries a listing. */
 export type Post = {
   id: string;
   userId: string;
@@ -43,17 +39,13 @@ export type Post = {
   createdAt: number;
 };
 
-export type Order = {
+export type Thread = {
   id: string;
-  postId: string;
-  customerId: string;
-  supplierId: string;
-  qtyKg: number;
-  lockedPricePerKg: number;
-  lockedTotal: number;
-  shippingIncluded: boolean;
+  participants: string[];
+  /** The post the conversation was started from — sent once, at the start. */
+  postId?: string;
   createdAt: number;
-  reviewed: boolean;
+  lastAt: number;
 };
 
 export type Message = {
@@ -61,41 +53,16 @@ export type Message = {
   threadId: string;
   senderId: string;
   text?: string;
-  orderId?: string;
+  /** The product card, attached once when the conversation begins. */
   postId?: string;
-  system?: boolean;
   createdAt: number;
 };
 
-export type Thread = {
-  id: string;
-  participants: string[];
-  createdAt: number;
-  lastAt: number;
-};
-
-export type Review = {
-  id: string;
-  orderId: string;
-  postId: string;
-  supplierId: string;
-  customerId: string;
-  rating: number;
-  text: string;
-  photos: string[];
-  createdAt: number;
-};
-
+/** Just a flag: the price was not what was listed. */
 export type Report = {
   id: string;
   postId: string;
-  orderId?: string;
   reporterId: string;
-  supplierId: string;
-  listedTotal: number;
-  askedTotal: number;
-  reason: string;
-  details: string;
-  photos: string[];
+  sellerId: string;
   createdAt: number;
 };

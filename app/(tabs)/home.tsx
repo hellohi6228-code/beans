@@ -1,10 +1,10 @@
 import { useRouter } from 'expo-router';
 import React, { useState } from 'react';
-import { KeyboardAvoidingView, Platform, ScrollView, TextInput, View } from 'react-native';
+import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, TextInput, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Btn, Card, Checkbox, Field, Label, Segmented, Sub, T } from '../../src/components/ui';
+import { Btn, Checkbox, Field, Label, Rule, Segmented, T } from '../../src/components/ui';
 import { useStore } from '../../src/store';
-import { radius, space, theme } from '../../src/theme';
+import { space, theme, track } from '../../src/theme';
 import { SUPPLIER_LABEL, SupplierType } from '../../src/types';
 import { Unit, toKg, weightParts } from '../../src/units';
 
@@ -37,102 +37,97 @@ export default function Home() {
     <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
       <ScrollView
         contentContainerStyle={{
-          paddingTop: space.xl,
+          paddingTop: space.xxl,
           paddingHorizontal: space.lg,
           paddingBottom: insets.bottom + 120,
-          gap: space.lg,
         }}
         keyboardShouldPersistTaps="handled"
       >
-        <View style={{ alignItems: 'center', gap: 2, marginBottom: space.sm }}>
-          <T size={34} weight="800" style={{ letterSpacing: -1 }}>
-            Beans
+        <View style={{ alignItems: 'center', marginBottom: space.xxl }}>
+          <T size={28} weight="300" style={{ letterSpacing: 8 }}>
+            BEANS
           </T>
-          <Sub>How much coffee?</Sub>
         </View>
 
-        <Card style={{ gap: space.lg }}>
-          <View style={{ gap: space.sm }}>
-            <View style={{ flexDirection: 'row', alignItems: 'stretch', gap: space.sm }}>
-              <TextInput
-                value={qty}
-                onChangeText={setQty}
-                keyboardType="decimal-pad"
-                placeholder="0"
-                placeholderTextColor={theme.line}
-                style={{
-                  flex: 1,
-                  minWidth: 0,
-                  height: 76,
-                  borderRadius: radius.md,
-                  borderWidth: 1,
-                  borderColor: theme.line,
-                  backgroundColor: theme.cardSolid,
-                  paddingHorizontal: space.lg,
-                  fontSize: 34,
-                  fontWeight: '700',
-                  color: theme.ink,
-                }}
-              />
-              <View style={{ width: 128, justifyContent: 'center' }}>
-                <Segmented
-                  value={unit}
-                  onChange={setUnit}
-                  options={[
-                    { value: 'kg', label: 'kg' },
-                    { value: 'lb', label: 'lb' },
-                  ]}
-                />
-              </View>
-            </View>
+        <Label>How much coffee</Label>
 
-            {valid ? (
-              <T size={13.5} color={theme.muted}>
-                {weightParts(qtyKg).kg} / {weightParts(qtyKg).lb}
-              </T>
-            ) : null}
-          </View>
-
-          <View style={{ gap: space.sm }}>
-            <Checkbox
-              checked={shippingIncluded}
-              onToggle={() => setShippingIncluded((v) => !v)}
-              label="Shipping included"
+        <View style={{ flexDirection: 'row', alignItems: 'flex-end', gap: space.lg, marginTop: space.md }}>
+          <TextInput
+            value={qty}
+            onChangeText={setQty}
+            keyboardType="decimal-pad"
+            placeholder="0"
+            placeholderTextColor={theme.line}
+            style={{
+              flex: 1,
+              minWidth: 0,
+              borderBottomWidth: StyleSheet.hairlineWidth,
+              borderBottomColor: theme.ink,
+              paddingVertical: 6,
+              fontSize: 38,
+              fontWeight: '200',
+              color: theme.ink,
+            }}
+          />
+          <View style={{ width: 110 }}>
+            <Segmented
+              value={unit}
+              onChange={setUnit}
+              options={[
+                { value: 'kg', label: 'kg' },
+                { value: 'lb', label: 'lb' },
+              ]}
             />
-
-            {shippingIncluded ? (
-              <Field
-                value={address}
-                onChangeText={setAddress}
-                placeholder="Shipping address"
-                multiline
-                style={{ marginTop: space.xs }}
-              />
-            ) : null}
           </View>
+        </View>
 
-          <Btn title="Find beans" onPress={search} disabled={!ready} />
-        </Card>
+        {valid ? (
+          <T size={10} color={theme.muted} style={{ letterSpacing: track.label, marginTop: space.md }}>
+            {weightParts(qtyKg).kg} / {weightParts(qtyKg).lb}
+          </T>
+        ) : null}
 
-        {me.role === 'supplier' ? null : picking ? (
-          <Card style={{ gap: space.sm }}>
-            <Label>What do you sell as</Label>
-            {TYPES.map((t) => (
-              <Btn
-                key={t}
-                title={SUPPLIER_LABEL[t]}
-                kind="soft"
-                onPress={() => {
-                  becomeSupplier(t);
-                  setPicking(false);
-                }}
-              />
-            ))}
-            <Btn title="Cancel" kind="ghost" onPress={() => setPicking(false)} />
-          </Card>
-        ) : (
-          <Btn title="I am also a supplier" kind="ghost" onPress={() => setPicking(true)} />
-        )}
+        <View style={{ marginTop: space.xl, gap: space.lg }}>
+          <Checkbox
+            checked={shippingIncluded}
+            onToggle={() => setShippingIncluded((v) => !v)}
+            label="Shipping included"
+          />
+
+          {shippingIncluded ? (
+            <Field value={address} onChangeText={setAddress} placeholder="Shipping address" multiline />
+          ) : null}
+        </View>
+
+        <Btn title="Find beans" onPress={search} disabled={!ready} style={{ marginTop: space.xl }} />
+
+        <View style={{ marginTop: space.xxl }}>
+          <Rule />
+          {me.role === 'supplier' ? null : picking ? (
+            <View style={{ paddingTop: space.lg, gap: space.md }}>
+              <Label>You are a</Label>
+              {TYPES.map((t) => (
+                <Btn
+                  key={t}
+                  title={SUPPLIER_LABEL[t]}
+                  kind="outline"
+                  onPress={() => {
+                    becomeSupplier(t);
+                    setPicking(false);
+                  }}
+                />
+              ))}
+              <Btn title="Cancel" kind="text" onPress={() => setPicking(false)} />
+            </View>
+          ) : (
+            <Btn
+              title="I am also a supplier"
+              kind="text"
+              onPress={() => setPicking(true)}
+              style={{ marginTop: space.lg }}
+            />
+          )}
+        </View>
       </ScrollView>
     </KeyboardAvoidingView>
   );

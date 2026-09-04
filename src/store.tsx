@@ -1,9 +1,9 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
-import { Message, Order, Post, Report, Review, SupplierType, Thread, User } from './types';
+import { Message, Post, Report, SupplierType, Thread, User } from './types';
 import { Unit } from './units';
 
-const KEY = 'beans.state.v4';
+const KEY = 'beans.state.v5';
 
 export type SourcingRequest = {
   qty: number;
@@ -16,10 +16,8 @@ export type SourcingRequest = {
 type Persisted = {
   users: User[];
   posts: Post[];
-  orders: Order[];
   threads: Thread[];
   messages: Message[];
-  reviews: Review[];
   reports: Report[];
   meId: string | null;
   request: SourcingRequest | null;
@@ -28,10 +26,8 @@ type Persisted = {
 const blank: Persisted = {
   users: [],
   posts: [],
-  orders: [],
   threads: [],
   messages: [],
-  reviews: [],
   reports: [],
   meId: null,
   request: null,
@@ -39,13 +35,7 @@ const blank: Persisted = {
 
 const uid = (p: string) => `${p}_${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`;
 
-const newUser = (name: string): User => ({
-  id: uid('u'),
-  role: 'customer',
-  name,
-  bio: '',
-  createdAt: Date.now(),
-});
+const newUser = (): User => ({ id: uid('u'), role: 'customer', name: '', bio: '', createdAt: Date.now() });
 
 type Ctx = {
   hydrated: boolean;
@@ -55,7 +45,6 @@ type Ctx = {
   updateMe: (patch: Partial<User>) => void;
   becomeSupplier: (type: SupplierType) => void;
 
-  /** Testing only: extra accounts on this device, and switching between them. */
   addTestUser: () => User;
   switchUser: (id: string) => void;
 
@@ -64,23 +53,23 @@ type Ctx = {
   userById: (id: string) => User | undefined;
   postById: (id: string) => Post | undefined;
   postsOf: (userId: string) => Post[];
-  reviewsOfSupplier: (supplierId: string) => Review[];
-  ratingOf: (supplierId: string) => { avg: number; count: number };
-  ordersOfCustomer: (customerId: string) => Order[];
   threadsOf: (userId: string) => Thread[];
   messagesOf: (threadId: string) => Message[];
+  reportedByMe: (postId: string) => boolean;
 
   addPost: (input: Omit<Post, 'id' | 'createdAt' | 'userId'>) => Post;
   removePost: (id: string) => void;
-  /** Switch a post's listing on or off without deleting the post. */
   toggleListing: (postId: string) => void;
 
-  openThread: (otherUserId: string, aboutPostId?: string) => string;
-  startOrder: (postId: string, qtyKg: number) => { threadId: string; orderId: string };
+  /**
+   * Starts the conversation about a post. The product card goes in once, here,
+   * and never again.
+   */
+  messageAbout: (post: Post) => string;
+  openThread: (otherUserId: string) => string;
   sendMessage: (threadId: string, text: string) => void;
 
-  addReview: (input: Omit<Review, 'id' | 'createdAt' | 'customerId'>) => void;
-  addReport: (input: Omit<Report, 'id' | 'createdAt' | 'reporterId'>) => void;
+  addReport: (postId: string, sellerId: string) => void;
 };
 
 const StoreCtx = createContext<Ctx | null>(null);
@@ -103,7 +92,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
           }
         }
         if (!next.meId || !next.users.some((u) => u.id === next.meId)) {
-          const account = newUser('');
+          const account = newUser();
           next = { ...next, users: [...next.users, account], meId: account.id };
         }
         setState(next);
@@ -138,7 +127,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       })),
 
     addTestUser: () => {
-      const account = newUser('');
+      const account = newUser();
       setState((s) => ({ ...s, users: [...s.users, account], meId: account.id }));
       return account;
     },
@@ -150,19 +139,11 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     userById,
     postById,
     postsOf: (userId) => state.posts.filter((p) => p.userId === userId).sort((a, b) => b.createdAt - a.createdAt),
-    reviewsOfSupplier: (supplierId) =>
-      state.reviews.filter((r) => r.supplierId === supplierId).sort((a, b) => b.createdAt - a.createdAt),
-    ratingOf: (supplierId) => {
-      const rs = state.reviews.filter((r) => r.supplierId === supplierId);
-      if (!rs.length) return { avg: 0, count: 0 };
-      return { avg: rs.reduce((s, r) => s + r.rating, 0) / rs.length, count: rs.length };
-    },
-    ordersOfCustomer: (customerId) =>
-      state.orders.filter((o) => o.customerId === customerId).sort((a, b) => b.createdAt - a.createdAt),
     threadsOf: (userId) =>
       state.threads.filter((t) => t.participants.includes(userId)).sort((a, b) => b.lastAt - a.lastAt),
     messagesOf: (threadId) =>
       state.messages.filter((m) => m.threadId === threadId).sort((a, b) => a.createdAt - b.createdAt),
+    reportedByMe: (postId) => state.reports.some((r) => r.postId === postId && r.reporterId === state.meId),
 
     addPost: (input) => {
       const post: Post = { ...input, id: uid('p'), userId: state.meId ?? '', createdAt: Date.now() };
@@ -180,100 +161,60 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
         ),
       })),
 
-    openThread: (otherUserId, aboutPostId) => {
+    messageAbout: (post) => {
       const meId = state.meId!;
+      // One conversation per product, so the card is only ever sent once.
       const existing = state.threads.find(
-        (t) => t.participants.includes(meId) && t.participants.includes(otherUserId)
+        (t) => t.postId === post.id && t.participants.includes(meId) && t.participants.includes(post.userId)
       );
-      const threadId = existing?.id ?? uid('th');
+      if (existing) return existing.id;
+
+      const threadId = uid('th');
       const now = Date.now();
-
-      const pinned =
-        aboutPostId && state.messages.some((m) => m.threadId === threadId && m.postId === aboutPostId);
-      const card: Message | null =
-        aboutPostId && !pinned
-          ? { id: uid('m'), threadId, senderId: meId, postId: aboutPostId, system: true, createdAt: now }
-          : null;
-
-      if (!existing || card) {
-        setState((s) => ({
-          ...s,
-          threads: existing
-            ? s.threads.map((t) => (t.id === threadId ? { ...t, lastAt: now } : t))
-            : [{ id: threadId, participants: [meId, otherUserId], createdAt: now, lastAt: now }, ...s.threads],
-          messages: card ? [...s.messages, card] : s.messages,
-        }));
-      }
-
+      setState((s) => ({
+        ...s,
+        threads: [
+          { id: threadId, participants: [meId, post.userId], postId: post.id, createdAt: now, lastAt: now },
+          ...s.threads,
+        ],
+        messages: [...s.messages, { id: uid('m'), threadId, senderId: meId, postId: post.id, createdAt: now }],
+      }));
       return threadId;
     },
 
-    startOrder: (postId, qtyKg) => {
-      const post = state.posts.find((p) => p.id === postId)!;
-      const listing = post.listing!;
-      const customerId = state.meId!;
+    openThread: (otherUserId) => {
+      const meId = state.meId!;
       const existing = state.threads.find(
-        (t) => t.participants.includes(customerId) && t.participants.includes(post.userId)
+        (t) => !t.postId && t.participants.includes(meId) && t.participants.includes(otherUserId)
       );
-      const threadId = existing?.id ?? uid('th');
+      if (existing) return existing.id;
+
+      const threadId = uid('th');
       const now = Date.now();
-
-      const order: Order = {
-        id: uid('o'),
-        postId,
-        customerId,
-        supplierId: post.userId,
-        qtyKg,
-        lockedPricePerKg: listing.pricePerKg,
-        lockedTotal: listing.pricePerKg * qtyKg,
-        shippingIncluded: listing.shippingIncluded,
-        createdAt: now,
-        reviewed: false,
-      };
-      const card: Message = {
-        id: uid('m'),
-        threadId,
-        senderId: customerId,
-        orderId: order.id,
-        system: true,
-        createdAt: now,
-      };
-
       setState((s) => ({
         ...s,
-        orders: [order, ...s.orders],
-        threads: existing
-          ? s.threads.map((t) => (t.id === threadId ? { ...t, lastAt: now } : t))
-          : [{ id: threadId, participants: [customerId, post.userId], createdAt: now, lastAt: now }, ...s.threads],
-        messages: [...s.messages, card],
+        threads: [{ id: threadId, participants: [meId, otherUserId], createdAt: now, lastAt: now }, ...s.threads],
       }));
-
-      return { threadId, orderId: order.id };
+      return threadId;
     },
 
     sendMessage: (threadId, text) => {
       const now = Date.now();
-      const msg: Message = { id: uid('m'), threadId, senderId: state.meId ?? '', text, createdAt: now };
       setState((s) => ({
         ...s,
-        messages: [...s.messages, msg],
+        messages: [...s.messages, { id: uid('m'), threadId, senderId: s.meId ?? '', text, createdAt: now }],
         threads: s.threads.map((t) => (t.id === threadId ? { ...t, lastAt: now } : t)),
       }));
     },
 
-    addReview: (input) => {
-      const review: Review = { ...input, id: uid('r'), customerId: state.meId ?? '', createdAt: Date.now() };
+    addReport: (postId, sellerId) =>
       setState((s) => ({
         ...s,
-        reviews: [review, ...s.reviews],
-        orders: s.orders.map((o) => (o.id === input.orderId ? { ...o, reviewed: true } : o)),
-      }));
-    },
-
-    addReport: (input) => {
-      const report: Report = { ...input, id: uid('rep'), reporterId: state.meId ?? '', createdAt: Date.now() };
-      setState((s) => ({ ...s, reports: [report, ...s.reports] }));
-    },
+        reports: [
+          { id: uid('rep'), postId, sellerId, reporterId: s.meId ?? '', createdAt: Date.now() },
+          ...s.reports,
+        ],
+      })),
   };
 
   return <StoreCtx.Provider value={value}>{children}</StoreCtx.Provider>;

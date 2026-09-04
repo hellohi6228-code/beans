@@ -4,106 +4,59 @@ import { Dimensions, ScrollView, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Header } from '../../src/components/Header';
 import { PostTile } from '../../src/components/PostTile';
-import { Avatar, Btn, Card, Chip, Empty, Label, Row, Stars, Sub, T } from '../../src/components/ui';
+import { Avatar, Btn, Empty, Row, Rule, Sub, T } from '../../src/components/ui';
 import { useStore } from '../../src/store';
-import { space, theme } from '../../src/theme';
+import { space, theme, track } from '../../src/theme';
 import { SUPPLIER_LABEL } from '../../src/types';
-import { money, weightParts } from '../../src/units';
 
 const W = Dimensions.get('window').width;
-const TILE = (W - space.lg * 2 - space.xs * 2) / 3;
+const TILE = (W - space.lg * 2 - 4) / 3;
 
 export default function Profile() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const { me, postsOf, ratingOf, ordersOfCustomer, postById, userById } = useStore();
+  const { me, postsOf } = useStore();
   if (!me) return null;
 
   const posts = postsOf(me.id);
-  const rating = ratingOf(me.id);
-  const orders = ordersOfCustomer(me.id);
 
   return (
     <>
       <Header title="Profile" />
 
-      <ScrollView
-        contentContainerStyle={{ paddingHorizontal: space.lg, paddingBottom: insets.bottom + 120, gap: space.md }}
-      >
-        <Card style={{ gap: space.md }}>
+      <ScrollView contentContainerStyle={{ paddingHorizontal: space.lg, paddingBottom: insets.bottom + 120 }}>
+        <Rule />
+        <View style={{ paddingVertical: space.lg, gap: space.lg }}>
           <Row style={{ gap: space.lg }}>
-            <Avatar uri={me.avatar} name={me.name || 'You'} size={72} />
-            <View style={{ flex: 1, gap: 2 }}>
-              <T size={18} weight="700">
+            <Avatar uri={me.avatar} name={me.name || ''} size={64} />
+            <View style={{ flex: 1, gap: 4 }}>
+              <T size={16} weight="400" style={{ letterSpacing: track.title }}>
                 {me.name || 'Add your name'}
               </T>
               {me.supplierType ? (
-                <T size={13} color={theme.muted}>
+                <T size={10} color={theme.muted} style={{ letterSpacing: track.label, textTransform: 'uppercase' }}>
                   {SUPPLIER_LABEL[me.supplierType]}
                 </T>
-              ) : null}
-              {rating.count ? (
-                <Row style={{ gap: 6 }}>
-                  <Stars value={rating.avg} />
-                  <T size={12.5} color={theme.muted}>
-                    {rating.avg.toFixed(1)} ({rating.count})
-                  </T>
-                </Row>
               ) : null}
             </View>
           </Row>
 
           {me.bio ? <Sub>{me.bio}</Sub> : null}
 
-          <Btn title="Edit profile" kind="soft" onPress={() => router.push('/edit-profile')} />
-        </Card>
+          <Btn title="Edit profile" kind="outline" onPress={() => router.push('/edit-profile')} />
+        </View>
+
+        <Rule />
 
         {posts.length === 0 ? (
-          <Card>
-            <Empty glyph="📷" title="No posts yet" />
-          </Card>
+          <Empty title="No posts yet" />
         ) : (
-          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: space.xs }}>
+          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 2, paddingTop: space.md }}>
             {posts.map((p) => (
               <PostTile key={p.id} post={p} size={TILE} />
             ))}
           </View>
         )}
-
-        {orders.length ? (
-          <>
-            <Label>Orders</Label>
-            {orders.map((o) => {
-              const post = postById(o.postId);
-              const supplier = userById(o.supplierId);
-              return (
-                <Card key={o.id} style={{ padding: space.md, gap: 4 }}>
-                  <Row style={{ justifyContent: 'space-between' }}>
-                    <T size={15} weight="700" numberOfLines={1} style={{ flex: 1 }}>
-                      {post?.caption || 'Post'}
-                    </T>
-                    <T size={15} weight="700">
-                      {money(o.lockedTotal)}
-                    </T>
-                  </Row>
-                  <T size={12.5} color={theme.muted}>
-                    {supplier?.name} · {weightParts(o.qtyKg).kg} / {weightParts(o.qtyKg).lb}
-                  </T>
-                  {!o.reviewed ? (
-                    <Btn
-                      title="Write a review"
-                      kind="soft"
-                      onPress={() => router.push(`/review/${o.id}`)}
-                      style={{ height: 42, marginTop: 4 }}
-                    />
-                  ) : (
-                    <Chip label="Reviewed" tone="gold" />
-                  )}
-                </Card>
-              );
-            })}
-          </>
-        ) : null}
       </ScrollView>
     </>
   );

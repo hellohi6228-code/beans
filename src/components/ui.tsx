@@ -13,14 +13,14 @@ import {
   View,
   ViewStyle,
 } from 'react-native';
-import { radius, shadow, space, theme } from '../theme';
+import { space, theme, track } from '../theme';
 
 /* ------------------------------------------------------------------ text */
 
 export function T({
   children,
-  size = 15,
-  weight = '400',
+  size = 14,
+  weight = '300',
   color = theme.ink,
   style,
   numberOfLines,
@@ -39,20 +39,15 @@ export function T({
   );
 }
 
-export const Title = ({ children }: { children: React.ReactNode }) => (
-  <T size={26} weight="700" style={{ letterSpacing: -0.4 }}>
+/** Small, uppercase, widely tracked — the only kind of label in the app. */
+export const Label = ({ children }: { children: React.ReactNode }) => (
+  <T size={10} weight="500" color={theme.muted} style={{ letterSpacing: track.label, textTransform: 'uppercase' }}>
     {children}
   </T>
 );
 
 export const Sub = ({ children }: { children: React.ReactNode }) => (
-  <T size={14} color={theme.inkSoft} style={{ lineHeight: 20 }}>
-    {children}
-  </T>
-);
-
-export const Label = ({ children }: { children: React.ReactNode }) => (
-  <T size={12} weight="700" color={theme.muted} style={{ letterSpacing: 0.8, textTransform: 'uppercase' }}>
+  <T size={13.5} weight="300" color={theme.inkSoft} style={{ lineHeight: 21 }}>
     {children}
   </T>
 );
@@ -61,40 +56,47 @@ export const Label = ({ children }: { children: React.ReactNode }) => (
 
 export function Screen({ children, style }: { children: React.ReactNode; style?: ViewStyle }) {
   return (
-    <LinearGradient
-      colors={theme.gradient}
-      start={{ x: 0.1, y: 0 }}
-      end={{ x: 0.9, y: 1 }}
-      style={[{ flex: 1 }, style]}
-    >
+    <LinearGradient colors={theme.gradient} start={{ x: 0.2, y: 0 }} end={{ x: 0.8, y: 1 }} style={[{ flex: 1 }, style]}>
       {children}
     </LinearGradient>
   );
 }
 
-export function Card({
+/** A block of content separated by hairlines, not a floating card. */
+export function Section({
   children,
   style,
   onPress,
+  divided = true,
 }: {
   children: React.ReactNode;
   style?: ViewStyle | ViewStyle[];
   onPress?: () => void;
+  divided?: boolean;
 }) {
   const body = (
-    <View style={[styles.card, style]}>
+    <View
+      style={[
+        {
+          paddingVertical: space.lg,
+          borderTopWidth: divided ? StyleSheet.hairlineWidth : 0,
+          borderTopColor: theme.line,
+        },
+        style,
+      ]}
+    >
       {children}
     </View>
   );
   if (!onPress) return body;
   return (
-    <Pressable onPress={onPress} style={({ pressed }) => (pressed ? { opacity: 0.75 } : null)}>
+    <Pressable onPress={onPress} style={({ pressed }) => (pressed ? { opacity: 0.6 } : null)}>
       {body}
     </Pressable>
   );
 }
 
-export const Divider = () => <View style={{ height: 1, backgroundColor: theme.line, marginVertical: space.md }} />;
+export const Rule = () => <View style={{ height: StyleSheet.hairlineWidth, backgroundColor: theme.line }} />;
 
 /* --------------------------------------------------------------- buttons */
 
@@ -108,60 +110,71 @@ export function Btn({
 }: {
   title: string;
   onPress?: () => void;
-  kind?: 'primary' | 'ghost' | 'danger' | 'soft';
+  kind?: 'primary' | 'outline' | 'text' | 'danger';
   disabled?: boolean;
   busy?: boolean;
   style?: ViewStyle;
 }) {
-  const palette: Record<string, { bg: string; fg: string; border?: string }> = {
-    primary: { bg: theme.accent, fg: '#fff' },
-    soft: { bg: theme.accentSoft, fg: theme.accent },
-    ghost: { bg: 'transparent', fg: theme.inkSoft, border: theme.line },
-    danger: { bg: theme.warnSoft, fg: theme.warn },
-  };
-  const p = palette[kind];
+  const solid = kind === 'primary';
+  const danger = kind === 'danger';
+  const plain = kind === 'text';
+
   return (
     <Pressable
       onPress={disabled || busy ? undefined : onPress}
       style={({ pressed }) => [
-        styles.btn,
-        { backgroundColor: p.bg, borderColor: p.border ?? 'transparent', borderWidth: p.border ? 1 : 0 },
-        (disabled || busy) && { opacity: 0.45 },
-        pressed && { opacity: 0.8 },
+        {
+          height: plain ? 32 : 48,
+          alignItems: 'center',
+          justifyContent: 'center',
+          paddingHorizontal: space.lg,
+          backgroundColor: solid ? theme.ink : 'transparent',
+          borderWidth: plain ? 0 : StyleSheet.hairlineWidth,
+          borderColor: danger ? theme.warn : theme.ink,
+        },
+        (disabled || busy) && { opacity: 0.3 },
+        pressed && { opacity: 0.6 },
         style,
       ]}
     >
-      {busy ? <ActivityIndicator color={p.fg} /> : <T size={15} weight="600" color={p.fg}>{title}</T>}
+      {busy ? (
+        <ActivityIndicator color={solid ? '#fff' : theme.ink} />
+      ) : (
+        <T
+          size={11}
+          weight="500"
+          color={solid ? '#FFFFFF' : danger ? theme.warn : theme.ink}
+          style={{
+            letterSpacing: track.button,
+            textTransform: 'uppercase',
+            textDecorationLine: plain ? 'underline' : 'none',
+          }}
+        >
+          {title}
+        </T>
+      )}
     </Pressable>
   );
 }
 
-export function Chip({
-  label,
-  selected,
-  onPress,
-  tone = 'neutral',
-}: {
-  label: string;
-  selected?: boolean;
-  onPress?: () => void;
-  tone?: 'neutral' | 'good' | 'warn' | 'gold';
-}) {
-  const tones = {
-    neutral: { bg: theme.accentSoft, fg: theme.accent },
-    good: { bg: theme.goodSoft, fg: theme.good },
-    warn: { bg: theme.warnSoft, fg: theme.warn },
-    gold: { bg: theme.goldSoft, fg: theme.gold },
-  } as const;
-  const c = tones[tone];
+export function Chip({ label, selected, onPress }: { label: string; selected?: boolean; onPress?: () => void }) {
   const body = (
     <View
-      style={[
-        styles.chip,
-        { backgroundColor: selected ? theme.accent : c.bg, borderColor: selected ? theme.accent : 'transparent' },
-      ]}
+      style={{
+        paddingHorizontal: 10,
+        paddingVertical: 5,
+        borderWidth: StyleSheet.hairlineWidth,
+        borderColor: selected ? theme.ink : theme.line,
+        backgroundColor: selected ? theme.ink : 'transparent',
+        alignSelf: 'flex-start',
+      }}
     >
-      <T size={12.5} weight="600" color={selected ? '#fff' : c.fg}>
+      <T
+        size={10}
+        weight="500"
+        color={selected ? '#fff' : theme.inkSoft}
+        style={{ letterSpacing: track.label, textTransform: 'uppercase' }}
+      >
         {label}
       </T>
     </View>
@@ -173,43 +186,55 @@ export function Chip({
 
 export function Field({
   label,
-  hint,
   style,
   ...rest
-}: TextInputProps & { label?: string; hint?: string; style?: ViewStyle }) {
+}: TextInputProps & { label?: string; style?: ViewStyle }) {
   return (
-    <View style={[{ gap: space.xs, minWidth: 0 }, style]}>
+    <View style={[{ gap: space.sm, minWidth: 0 }, style]}>
       {label ? <Label>{label}</Label> : null}
       <TextInput
         placeholderTextColor={theme.muted}
         {...rest}
-        style={[styles.input, rest.multiline && { height: 110, paddingTop: 12, textAlignVertical: 'top' }]}
+        style={[
+          {
+            borderBottomWidth: StyleSheet.hairlineWidth,
+            borderBottomColor: theme.ink,
+            paddingVertical: 8,
+            fontSize: 15,
+            fontWeight: '300',
+            color: theme.ink,
+            minWidth: 0,
+          },
+          rest.multiline && { height: 88, textAlignVertical: 'top' },
+        ]}
       />
-      {hint ? <T size={12} color={theme.muted}>{hint}</T> : null}
     </View>
   );
 }
 
-export function Checkbox({
-  checked,
-  onToggle,
-  label,
-  sublabel,
-}: {
-  checked: boolean;
-  onToggle: () => void;
-  label: string;
-  sublabel?: string;
-}) {
+export function Checkbox({ checked, onToggle, label }: { checked: boolean; onToggle: () => void; label: string }) {
   return (
-    <Pressable onPress={onToggle} style={styles.checkRow}>
-      <View style={[styles.box, checked && { backgroundColor: theme.accent, borderColor: theme.accent }]}>
-        {checked ? <T size={14} weight="700" color="#fff">✓</T> : null}
+    <Pressable onPress={onToggle} style={{ flexDirection: 'row', alignItems: 'center', gap: space.md }}>
+      <View
+        style={{
+          width: 18,
+          height: 18,
+          borderWidth: StyleSheet.hairlineWidth,
+          borderColor: theme.ink,
+          backgroundColor: checked ? theme.ink : 'transparent',
+          alignItems: 'center',
+          justifyContent: 'center',
+        }}
+      >
+        {checked ? (
+          <T size={11} weight="600" color="#fff">
+            ✓
+          </T>
+        ) : null}
       </View>
-      <View style={{ flex: 1 }}>
-        <T size={15} weight="600">{label}</T>
-        {sublabel ? <T size={12.5} color={theme.muted} style={{ marginTop: 2 }}>{sublabel}</T> : null}
-      </View>
+      <T size={13} weight="400" style={{ letterSpacing: 0.3 }}>
+        {label}
+      </T>
     </Pressable>
   );
 }
@@ -224,16 +249,28 @@ export function Segmented<V extends string>({
   onChange: (v: V) => void;
 }) {
   return (
-    <View style={styles.segment}>
+    <View style={{ flexDirection: 'row' }}>
       {options.map((o) => {
         const on = o.value === value;
         return (
           <Pressable
             key={o.value}
             onPress={() => onChange(o.value)}
-            style={[styles.segmentItem, on && styles.segmentItemOn]}
+            style={{
+              flex: 1,
+              height: 40,
+              alignItems: 'center',
+              justifyContent: 'center',
+              borderBottomWidth: on ? 1 : StyleSheet.hairlineWidth,
+              borderBottomColor: on ? theme.ink : theme.line,
+            }}
           >
-            <T size={14} weight={on ? '700' : '500'} color={on ? theme.accent : theme.inkSoft}>
+            <T
+              size={11}
+              weight={on ? '600' : '400'}
+              color={on ? theme.ink : theme.muted}
+              style={{ letterSpacing: track.button, textTransform: 'uppercase' }}
+            >
               {o.label}
             </T>
           </Pressable>
@@ -245,168 +282,56 @@ export function Segmented<V extends string>({
 
 /* ---------------------------------------------------------------- photos */
 
-const HUES = ['#CFE0EF', '#D9E7DC', '#EFE2CE', '#E6DCEC', '#D6E6E8', '#EEDCD8'];
-
-function hueFor(seed: string) {
-  let n = 0;
-  for (let i = 0; i < seed.length; i++) n = (n * 31 + seed.charCodeAt(i)) >>> 0;
-  return HUES[n % HUES.length];
-}
-
-/** A real photo, or an empty tile if there is not one yet. */
-export function Photo({
-  uri,
-  style,
-  radius: r = radius.md,
-}: {
-  uri?: string;
-  style?: ViewStyle;
-  radius?: number;
-}) {
+export function Photo({ uri, style }: { uri?: string; style?: ViewStyle }) {
   if (uri) {
-    return (
-      <Image
-        source={{ uri }}
-        resizeMode="cover"
-        style={[{ borderRadius: r, backgroundColor: theme.line }, style as ImageStyle]}
-      />
-    );
+    return <Image source={{ uri }} resizeMode="cover" style={[{ backgroundColor: theme.lineSoft }, style as ImageStyle]} />;
   }
-  return <View style={[{ borderRadius: r, backgroundColor: theme.line }, style]} />;
+  return <View style={[{ backgroundColor: theme.lineSoft }, style]} />;
 }
 
-export function Avatar({ uri, name, size = 44 }: { uri?: string; name: string; size?: number }) {
+export function Avatar({ uri, name, size = 40 }: { uri?: string; name: string; size?: number }) {
   if (uri) {
     return <Image source={{ uri }} style={{ width: size, height: size, borderRadius: size / 2 }} />;
   }
-
-  const initials = name
-    .split(' ')
-    .slice(0, 2)
-    .map((w) => w[0])
-    .join('')
-    .toUpperCase();
+  const initials =
+    name
+      .split(' ')
+      .slice(0, 2)
+      .map((w) => w[0])
+      .join('')
+      .toUpperCase() || '·';
   return (
     <View
       style={{
         width: size,
         height: size,
         borderRadius: size / 2,
-        backgroundColor: hueFor(name),
+        borderWidth: StyleSheet.hairlineWidth,
+        borderColor: theme.line,
+        backgroundColor: theme.surface,
         alignItems: 'center',
         justifyContent: 'center',
       }}
     >
-      <T size={size * 0.36} weight="700" color={theme.ink}>
+      <T size={size * 0.32} weight="400" color={theme.inkSoft} style={{ letterSpacing: 0.5 }}>
         {initials}
       </T>
     </View>
   );
 }
 
-export function Stars({ value, size = 14 }: { value: number; size?: number }) {
-  const full = Math.round(value);
+/* ------------------------------------------------------------------ misc */
+
+export function Empty({ title }: { title: string }) {
   return (
-    <T size={size} color={theme.gold}>
-      {'★★★★★'.slice(0, full)}
-      <T size={size} color={theme.line}>
-        {'★★★★★'.slice(full)}
+    <View style={{ paddingVertical: space.xxl, alignItems: 'center' }}>
+      <T size={11} weight="400" color={theme.muted} style={{ letterSpacing: track.label, textTransform: 'uppercase' }}>
+        {title}
       </T>
-    </T>
-  );
-}
-
-/* ----------------------------------------------------------------- misc */
-
-export function Empty({ glyph, title, body }: { glyph: string; title: string; body?: string }) {
-  return (
-    <View style={{ alignItems: 'center', paddingVertical: space.xxl, gap: space.sm }}>
-      <T size={34}>{glyph}</T>
-      <T size={16} weight="600">{title}</T>
-      {body ? (
-        <T size={13.5} color={theme.muted} style={{ textAlign: 'center', maxWidth: 260, lineHeight: 19 }}>
-          {body}
-        </T>
-      ) : null}
     </View>
   );
 }
 
 export function Row({ children, style }: { children: React.ReactNode; style?: ViewStyle }) {
-  return <View style={[{ flexDirection: 'row', alignItems: 'center', gap: space.sm }, style]}>{children}</View>;
+  return <View style={[{ flexDirection: 'row', alignItems: 'center', gap: space.md }, style]}>{children}</View>;
 }
-
-const styles = StyleSheet.create({
-  card: {
-    backgroundColor: theme.card,
-    borderRadius: radius.lg,
-    padding: space.lg,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.75)',
-    ...shadow,
-  },
-  btn: {
-    height: 50,
-    borderRadius: radius.md,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: space.lg,
-  },
-  chip: {
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: radius.pill,
-    borderWidth: 1,
-    alignSelf: 'flex-start',
-  },
-  input: {
-    backgroundColor: theme.cardSolid,
-    borderRadius: radius.md,
-    borderWidth: 1,
-    borderColor: theme.line,
-    paddingHorizontal: space.md,
-    height: 50,
-    fontSize: 16,
-    color: theme.ink,
-    // Text inputs have an intrinsic min width on web; without this they refuse
-    // to shrink inside a flex row and push their neighbours off screen.
-    minWidth: 0,
-  },
-  checkRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: space.md,
-    paddingVertical: space.sm,
-  },
-  box: {
-    width: 24,
-    height: 24,
-    borderRadius: 7,
-    borderWidth: 1.5,
-    borderColor: theme.muted,
-    backgroundColor: theme.cardSolid,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  segment: {
-    flexDirection: 'row',
-    backgroundColor: 'rgba(255,255,255,0.7)',
-    borderRadius: radius.md,
-    padding: 4,
-    gap: 4,
-    borderWidth: 1,
-    borderColor: theme.line,
-  },
-  segmentItem: {
-    flex: 1,
-    height: 40,
-    borderRadius: radius.sm + 2,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  segmentItemOn: {
-    backgroundColor: theme.cardSolid,
-    ...shadow,
-    shadowOpacity: 0.05,
-  },
-});

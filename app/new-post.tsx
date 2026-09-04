@@ -3,9 +3,9 @@ import React, { useState } from 'react';
 import { KeyboardAvoidingView, Platform, ScrollView, View } from 'react-native';
 import { Header } from '../src/components/Header';
 import { PhotoPicker } from '../src/components/PhotoPicker';
-import { Btn, Card, Checkbox, Field, Label, Row, Segmented, T } from '../src/components/ui';
+import { Btn, Checkbox, Field, Label, Row, Rule, Segmented, T } from '../src/components/ui';
 import { useStore } from '../src/store';
-import { space, theme } from '../src/theme';
+import { space, theme, track } from '../src/theme';
 import { KG_PER_LB, Unit, money, priceParts, toKg, weightParts } from '../src/units';
 
 export default function NewPost() {
@@ -37,94 +37,86 @@ export default function NewPost() {
     router.back();
   };
 
-  const p = priceParts(pricePerKg);
-
   return (
     <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
       <Header back title="New post" />
 
       <ScrollView
-        contentContainerStyle={{ padding: space.lg, paddingTop: 0, gap: space.md, paddingBottom: space.xxl }}
+        contentContainerStyle={{ paddingHorizontal: space.lg, paddingBottom: space.xxl, gap: space.xl }}
         keyboardShouldPersistTaps="handled"
       >
-        <Card>
-          <PhotoPicker photos={photos} onChange={setPhotos} max={3} />
-        </Card>
+        <PhotoPicker photos={photos} onChange={setPhotos} max={3} />
 
-        <Card style={{ gap: space.lg }}>
-          <Field label="Caption" value={caption} onChangeText={setCaption} multiline />
+        <Field label="Caption" value={caption} onChangeText={setCaption} multiline />
 
-          <Checkbox checked={selling} onToggle={() => setSelling((v) => !v)} label="Selling this" />
+        <View>
+          <Rule />
+          <View style={{ paddingTop: space.lg, gap: space.lg }}>
+            <Checkbox checked={selling} onToggle={() => setSelling((v) => !v)} label="Selling this" />
 
-          {selling ? (
-            <>
-              <View style={{ gap: space.sm }}>
-                <Label>Units</Label>
-                <Segmented
-                  value={unit}
-                  onChange={setUnit}
-                  options={[
-                    { value: 'kg', label: 'kg' },
-                    { value: 'lb', label: 'lb' },
-                  ]}
+            {selling ? (
+              <>
+                <View style={{ gap: space.sm }}>
+                  <Label>Units</Label>
+                  <Segmented
+                    value={unit}
+                    onChange={setUnit}
+                    options={[
+                      { value: 'kg', label: 'kg' },
+                      { value: 'lb', label: 'lb' },
+                    ]}
+                  />
+                </View>
+
+                <Row style={{ gap: space.lg, alignItems: 'flex-start' }}>
+                  <Field
+                    label={`Price per ${unit}`}
+                    value={price}
+                    onChangeText={setPrice}
+                    keyboardType="decimal-pad"
+                    placeholder="0.00"
+                    style={{ flex: 1 }}
+                  />
+                  <Field
+                    label={`Amount (${unit})`}
+                    value={amount}
+                    onChangeText={setAmount}
+                    keyboardType="decimal-pad"
+                    placeholder="0"
+                    style={{ flex: 1 }}
+                  />
+                </Row>
+
+                {pricePerKg > 0 || lotKg > 0 ? (
+                  <View style={{ gap: 3 }}>
+                    {pricePerKg > 0 ? (
+                      <T size={13} weight="400">
+                        {priceParts(pricePerKg).perKg} · {priceParts(pricePerKg).perLb}
+                      </T>
+                    ) : null}
+                    {lotKg > 0 ? (
+                      <T size={10} color={theme.muted} style={{ letterSpacing: track.label }}>
+                        {weightParts(lotKg).kg} / {weightParts(lotKg).lb}
+                        {pricePerKg > 0 ? ` · ${money(pricePerKg * lotKg)}` : ''}
+                      </T>
+                    ) : null}
+                  </View>
+                ) : null}
+
+                <Checkbox
+                  checked={shippingIncluded}
+                  onToggle={() => setShippingIncluded((v) => !v)}
+                  label="Shipping included"
                 />
-              </View>
+              </>
+            ) : null}
+          </View>
+        </View>
 
-              <Row style={{ gap: space.sm, alignItems: 'flex-start' }}>
-                <Field
-                  label={`Price per ${unit}`}
-                  value={price}
-                  onChangeText={setPrice}
-                  keyboardType="decimal-pad"
-                  placeholder="0.00"
-                  style={{ flex: 1 }}
-                />
-                <Field
-                  label={`Amount (${unit})`}
-                  value={amount}
-                  onChangeText={setAmount}
-                  keyboardType="decimal-pad"
-                  placeholder="0"
-                  style={{ flex: 1 }}
-                />
-              </Row>
-
-              {pricePerKg > 0 || lotKg > 0 ? (
-                <Card
-                  style={{
-                    backgroundColor: theme.accentSoft,
-                    borderColor: theme.accentSoft,
-                    padding: space.md,
-                    gap: 2,
-                  }}
-                >
-                  {pricePerKg > 0 ? (
-                    <T size={15} weight="700" color={theme.accent}>
-                      {p.perKg} · {p.perLb}
-                    </T>
-                  ) : null}
-                  {lotKg > 0 ? (
-                    <T size={13.5} color={theme.inkSoft}>
-                      {weightParts(lotKg).kg} / {weightParts(lotKg).lb}
-                      {pricePerKg > 0 ? ` · ${money(pricePerKg * lotKg)}` : ''}
-                    </T>
-                  ) : null}
-                </Card>
-              ) : null}
-
-              <Checkbox
-                checked={shippingIncluded}
-                onToggle={() => setShippingIncluded((v) => !v)}
-                label="Shipping included"
-              />
-            </>
-          ) : null}
-        </Card>
-
-        <Row style={{ gap: space.sm }}>
-          <Btn title="Cancel" kind="ghost" onPress={() => router.back()} style={{ flex: 1 }} />
-          <Btn title="Post" onPress={submit} disabled={!ready} style={{ flex: 2 }} />
-        </Row>
+        <View style={{ gap: space.md }}>
+          <Btn title="Post" onPress={submit} disabled={!ready} />
+          <Btn title="Cancel" kind="text" onPress={() => router.back()} />
+        </View>
       </ScrollView>
     </KeyboardAvoidingView>
   );

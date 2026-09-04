@@ -1,13 +1,13 @@
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useState } from 'react';
-import { Dimensions, Pressable, ScrollView, View } from 'react-native';
+import { Dimensions, Modal, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Header } from '../../src/components/Header';
-import { Avatar, Btn, Card, Chip, Divider, Field, Label, Photo, Row, Segmented, Stars, Sub, T } from '../../src/components/ui';
+import { Avatar, Btn, Label, Photo, Row, Rule, Sub, T } from '../../src/components/ui';
 import { useStore } from '../../src/store';
-import { space, theme } from '../../src/theme';
+import { space, theme, track } from '../../src/theme';
 import { SUPPLIER_LABEL } from '../../src/types';
-import { Unit, money, priceParts, toKg, weightParts } from '../../src/units';
+import { priceParts, weightParts } from '../../src/units';
 
 const W = Dimensions.get('window').width;
 
@@ -15,201 +15,164 @@ export default function PostDetail() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const { postById, userById, ratingOf, startOrder, openThread, removePost, toggleListing, me, state } = useStore();
+  const { postById, userById, messageAbout, removePost, toggleListing, addReport, reportedByMe, me } = useStore();
+
+  const [asking, setAsking] = useState(false);
 
   const post = postById(String(id));
   const author = post ? userById(post.userId) : undefined;
-  const listing = post?.listing;
-
-  const [unit, setUnit] = useState<Unit>(state.request?.unit ?? 'kg');
-  const [qty, setQty] = useState(() => {
-    if (!post?.listing) return '';
-    const kg = Math.min(state.request?.qtyKg ?? post.listing.lotKg, post.listing.lotKg);
-    const u = state.request?.unit ?? 'kg';
-    return String(Number((u === 'kg' ? kg : kg * 2.20462262).toFixed(2)));
-  });
-
   if (!post || !author) return <Header back title="Not found" />;
 
+  const listing = post.listing;
   const mine = me?.id === post.userId;
-  const rating = ratingOf(author.id);
+  const live = !!listing?.active;
+  const reported = reportedByMe(post.id);
 
-  const parsed = parseFloat(qty.replace(',', '.'));
-  const qtyKg = isFinite(parsed) && parsed > 0 ? toKg(parsed, unit) : 0;
-  const overLot = !!listing && qtyKg > listing.lotKg + 1e-9;
-  const canOrder = !!listing && listing.active && !!me && !mine && qtyKg > 0 && !overLot;
-
-  const order = () => {
-    const { threadId } = startOrder(post.id, qtyKg);
-    router.replace(`/chat/${threadId}`);
-  };
+  // A listing that is switched off cannot be messaged about.
+  const canMessage = !!me && !mine && (!listing || live);
 
   return (
     <>
-      <Header back title={author.name || 'Post'} />
+      <Header back />
 
-      <ScrollView
-        contentContainerStyle={{ paddingHorizontal: space.lg, paddingBottom: insets.bottom + 120, gap: space.md }}
-      >
-        <ScrollView
-          horizontal
-          pagingEnabled
-          showsHorizontalScrollIndicator={false}
-          style={{ marginHorizontal: -space.lg }}
-        >
-          <View style={{ flexDirection: 'row', gap: space.sm, paddingHorizontal: space.lg }}>
-            {post.photos.map((uri, i) => (
-              <Photo key={i} uri={uri} style={{ width: W - space.lg * 2, height: 260 }} />
-            ))}
-          </View>
+      <ScrollView contentContainerStyle={{ paddingBottom: insets.bottom + 120 }}>
+        <ScrollView horizontal pagingEnabled showsHorizontalScrollIndicator={false}>
+          {post.photos.map((uri, i) => (
+            <Photo key={i} uri={uri} style={{ width: W, height: W * 1.25 }} />
+          ))}
         </ScrollView>
 
-        <Card onPress={() => router.push(`/business/${author.id}`)} style={{ padding: space.md }}>
-          <Row style={{ gap: space.md }}>
-            <Avatar uri={author.avatar} name={author.name || '?'} />
-            <View style={{ flex: 1 }}>
-              <T size={15} weight="700">
-                {author.name || 'Beans user'}
-              </T>
-              {author.supplierType ? (
-                <T size={12.5} color={theme.muted}>
-                  {SUPPLIER_LABEL[author.supplierType]}
-                </T>
-              ) : null}
-              {rating.count ? <Stars value={rating.avg} /> : null}
-            </View>
-            <T size={18} color={theme.muted}>
-              ›
+        <View style={{ paddingHorizontal: space.lg, paddingTop: space.lg }}>
+          {post.caption ? (
+            <T size={17} weight="300" style={{ letterSpacing: track.title, lineHeight: 24 }}>
+              {post.caption}
             </T>
-          </Row>
-        </Card>
+          ) : null}
 
-        {post.caption ? (
-          <Card>
-            <Sub>{post.caption}</Sub>
-          </Card>
-        ) : null}
+          {listing ? (
+            <View style={{ marginTop: space.lg }}>
+              <Row style={{ gap: space.sm, alignItems: 'baseline' }}>
+                <T size={19} weight="400">
+                  {priceParts(listing.pricePerKg).perKg}
+                </T>
+                <T size={13} weight="300" color={theme.inkSoft}>
+                  {priceParts(listing.pricePerKg).perLb}
+                </T>
+              </Row>
 
-        {listing ? (
-          <Card style={{ gap: space.md, opacity: listing.active || mine ? 1 : 0.6 }}>
-            <Row style={{ justifyContent: 'space-between' }}>
-              <Chip
-                label={listing.shippingIncluded ? 'Shipping included' : 'Shipping not included'}
-                tone={listing.shippingIncluded ? 'good' : 'warn'}
-              />
+              <T size={11} color={theme.muted} style={{ letterSpacing: track.label, marginTop: 6 }}>
+                {weightParts(listing.lotKg).kg} / {weightParts(listing.lotKg).lb}
+              </T>
+
+              <T size={11} color={theme.muted} style={{ letterSpacing: track.label, marginTop: 4 }}>
+                {listing.shippingIncluded ? 'SHIPPING INCLUDED' : 'SHIPPING NOT INCLUDED'}
+              </T>
+
               {mine ? (
                 <Pressable
                   onPress={() => toggleListing(post.id)}
                   style={{
+                    marginTop: space.lg,
                     flexDirection: 'row',
                     alignItems: 'center',
-                    gap: 8,
-                    paddingHorizontal: 10,
-                    paddingVertical: 5,
-                    borderRadius: 999,
-                    backgroundColor: listing.active ? theme.goodSoft : theme.line,
+                    justifyContent: 'space-between',
+                    borderWidth: StyleSheet.hairlineWidth,
+                    borderColor: theme.ink,
+                    paddingVertical: 12,
+                    paddingHorizontal: space.md,
                   }}
                 >
-                  <View
-                    style={{
-                      width: 10,
-                      height: 10,
-                      borderRadius: 5,
-                      backgroundColor: listing.active ? theme.good : theme.muted,
-                    }}
-                  />
-                  <T size={12.5} weight="700" color={listing.active ? theme.good : theme.muted}>
-                    {listing.active ? 'On' : 'Off'}
+                  <T size={11} weight="500" style={{ letterSpacing: track.button }}>
+                    LISTING
+                  </T>
+                  <T size={11} weight="600" style={{ letterSpacing: track.button }}>
+                    {live ? 'ON' : 'OFF'}
                   </T>
                 </Pressable>
-              ) : !listing.active ? (
-                <Chip label="Not available" tone="warn" />
+              ) : !live ? (
+                <T size={11} color={theme.warn} style={{ letterSpacing: track.label, marginTop: space.md }}>
+                  NOT AVAILABLE
+                </T>
               ) : null}
-            </Row>
+            </View>
+          ) : null}
 
-            <Row style={{ justifyContent: 'space-between' }}>
-              <View>
-                <Label>Price</Label>
-                <T size={22} weight="800" color={theme.accent}>
-                  {priceParts(listing.pricePerKg).perKg}
+          <View style={{ marginTop: space.xl }}>
+            <Rule />
+            <Pressable
+              onPress={() => router.push(`/business/${author.id}`)}
+              style={{ paddingVertical: space.lg, flexDirection: 'row', alignItems: 'center', gap: space.md }}
+            >
+              <Avatar uri={author.avatar} name={author.name || '?'} size={36} />
+              <View style={{ flex: 1 }}>
+                <T size={13} weight="400">
+                  {author.name || 'Beans user'}
                 </T>
-                <T size={15} weight="600" color={theme.inkSoft}>
-                  {priceParts(listing.pricePerKg).perLb}
-                </T>
-              </View>
-              <View style={{ alignItems: 'flex-end' }}>
-                <Label>Amount</Label>
-                <T size={22} weight="800">
-                  {weightParts(listing.lotKg).kg}
-                </T>
-                <T size={15} weight="600" color={theme.inkSoft}>
-                  {weightParts(listing.lotKg).lb}
-                </T>
-              </View>
-            </Row>
-
-            {me && !mine ? (
-              <>
-                <Divider />
-                <Label>How much</Label>
-                <Row style={{ gap: space.sm, alignItems: 'flex-end' }}>
-                  <Field value={qty} onChangeText={setQty} keyboardType="decimal-pad" style={{ flex: 1 }} />
-                  <View style={{ width: 120 }}>
-                    <Segmented
-                      value={unit}
-                      onChange={setUnit}
-                      options={[
-                        { value: 'kg', label: 'kg' },
-                        { value: 'lb', label: 'lb' },
-                      ]}
-                    />
-                  </View>
-                </Row>
-
-                <T size={13} color={overLot ? theme.warn : theme.muted}>
-                  {overLot
-                    ? `Only ${weightParts(listing.lotKg).kg} / ${weightParts(listing.lotKg).lb} available.`
-                    : qtyKg > 0
-                      ? `${weightParts(qtyKg).kg} / ${weightParts(qtyKg).lb}`
-                      : ''}
-                </T>
-
-                <Row style={{ justifyContent: 'space-between' }}>
-                  <Label>Total</Label>
-                  <T size={26} weight="800">
-                    {money(listing.pricePerKg * qtyKg)}
+                {author.supplierType ? (
+                  <T size={10} color={theme.muted} style={{ letterSpacing: track.label, textTransform: 'uppercase' }}>
+                    {SUPPLIER_LABEL[author.supplierType]}
                   </T>
-                </Row>
+                ) : null}
+              </View>
+              <T size={12} color={theme.muted}>
+                →
+              </T>
+            </Pressable>
+            <Rule />
+          </View>
 
-                <Btn title="Order" onPress={order} disabled={!canOrder} />
-              </>
-            ) : null}
-          </Card>
-        ) : null}
+          {canMessage ? (
+            <Btn title="Message" onPress={() => router.replace(`/chat/${messageAbout(post)}`)} style={{ marginTop: space.lg }} />
+          ) : null}
 
-        {me && !mine ? (
-          <Btn
-            title="Message"
-            kind="soft"
-            onPress={() => router.push(`/chat/${openThread(post.userId, post.id)}`)}
-          />
-        ) : null}
+          {listing && me && !mine ? (
+            reported ? (
+              <T size={10} color={theme.muted} style={{ letterSpacing: track.label, marginTop: space.lg, textAlign: 'center' }}>
+                PRICE REPORTED
+              </T>
+            ) : (
+              <Btn title="Report price" kind="text" onPress={() => setAsking(true)} style={{ marginTop: space.md }} />
+            )
+          ) : null}
 
-        {listing && me && !mine ? (
-          <Btn title="Report price" kind="danger" onPress={() => router.push(`/report/${post.id}`)} />
-        ) : null}
-
-        {mine ? (
-          <Btn
-            title="Delete post"
-            kind="danger"
-            onPress={() => {
-              removePost(post.id);
-              router.back();
-            }}
-          />
-        ) : null}
+          {mine ? (
+            <Btn
+              title="Delete post"
+              kind="text"
+              onPress={() => {
+                removePost(post.id);
+                router.back();
+              }}
+              style={{ marginTop: space.lg }}
+            />
+          ) : null}
+        </View>
       </ScrollView>
+
+      {/* Report is one question. */}
+      <Modal visible={asking} transparent animationType="fade" onRequestClose={() => setAsking(false)}>
+        <Pressable
+          onPress={() => setAsking(false)}
+          style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.35)', justifyContent: 'center', padding: space.lg }}
+        >
+          <View style={{ backgroundColor: theme.surface, padding: space.lg }}>
+            <T size={14} weight="400" style={{ lineHeight: 21, marginBottom: space.lg }}>
+              Were you asked to pay a different price than the one listed?
+            </T>
+            <Row style={{ gap: space.md }}>
+              <Btn title="No" kind="outline" onPress={() => setAsking(false)} style={{ flex: 1 }} />
+              <Btn
+                title="Yes"
+                onPress={() => {
+                  addReport(post.id, post.userId);
+                  setAsking(false);
+                }}
+                style={{ flex: 1 }}
+              />
+            </Row>
+          </View>
+        </Pressable>
+      </Modal>
     </>
   );
 }

@@ -1,14 +1,11 @@
 import React from 'react';
-import { Pressable, ScrollView, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useStore } from '../store';
-import { space, theme } from '../theme';
-import { Avatar, T } from './ui';
+import { space, theme, track } from '../theme';
+import { T } from './ui';
 
-/**
- * Testing bar. Switch between accounts on this device to check that one user
- * can find and open another user's post.
- */
+/** Testing bar: switch accounts to check one user can find another's post. */
 export function DemoBar() {
   const insets = useSafeAreaInsets();
   const { state, me, switchUser, addTestUser } = useStore();
@@ -16,18 +13,17 @@ export function DemoBar() {
   return (
     <View
       style={{
-        paddingTop: insets.top + 4,
-        paddingBottom: 6,
-        paddingHorizontal: space.sm,
-        backgroundColor: 'rgba(255,255,255,0.75)',
-        borderBottomWidth: 1,
+        paddingTop: insets.top + 6,
+        paddingBottom: 8,
+        paddingHorizontal: space.md,
+        borderBottomWidth: StyleSheet.hairlineWidth,
         borderBottomColor: theme.line,
         flexDirection: 'row',
         alignItems: 'center',
-        gap: space.sm,
+        gap: space.md,
       }}
     >
-      <T size={10} weight="700" color={theme.muted} style={{ letterSpacing: 0.6 }}>
+      <T size={9} weight="500" color={theme.muted} style={{ letterSpacing: track.label }}>
         DEMO
       </T>
 
@@ -39,19 +35,19 @@ export function DemoBar() {
               key={u.id}
               onPress={() => switchUser(u.id)}
               style={{
-                flexDirection: 'row',
-                alignItems: 'center',
-                gap: 5,
-                paddingVertical: 3,
-                paddingHorizontal: 7,
-                borderRadius: 999,
-                backgroundColor: on ? theme.accent : 'rgba(255,255,255,0.9)',
-                borderWidth: 1,
-                borderColor: on ? theme.accent : theme.line,
+                paddingVertical: 4,
+                paddingHorizontal: 10,
+                borderWidth: StyleSheet.hairlineWidth,
+                borderColor: on ? theme.ink : theme.line,
+                backgroundColor: on ? theme.ink : 'transparent',
               }}
             >
-              <Avatar uri={u.avatar} name={u.name || `U${i + 1}`} size={18} />
-              <T size={11.5} weight="600" color={on ? '#fff' : theme.ink}>
+              <T
+                size={9.5}
+                weight="500"
+                color={on ? '#fff' : theme.inkSoft}
+                style={{ letterSpacing: track.label, textTransform: 'uppercase' }}
+              >
                 {u.name || `User ${i + 1}`}
               </T>
             </Pressable>
@@ -63,14 +59,12 @@ export function DemoBar() {
           style={{
             paddingVertical: 4,
             paddingHorizontal: 10,
-            borderRadius: 999,
-            borderWidth: 1,
+            borderWidth: StyleSheet.hairlineWidth,
             borderColor: theme.line,
-            backgroundColor: 'rgba(255,255,255,0.9)',
           }}
         >
-          <T size={11.5} weight="700" color={theme.accent}>
-            + user
+          <T size={9.5} weight="500" color={theme.ink} style={{ letterSpacing: track.label }}>
+            + USER
           </T>
         </Pressable>
       </ScrollView>

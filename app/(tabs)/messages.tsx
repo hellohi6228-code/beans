@@ -1,24 +1,24 @@
 import { useRouter } from 'expo-router';
 import React from 'react';
-import { ScrollView, View } from 'react-native';
+import { Pressable, ScrollView, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Header } from '../../src/components/Header';
-import { Avatar, Card, Empty, Row, T } from '../../src/components/ui';
+import { Empty, Photo, Rule, T } from '../../src/components/ui';
 import { useStore } from '../../src/store';
-import { space, theme } from '../../src/theme';
+import { space, theme, track } from '../../src/theme';
 
 const ago = (ts: number) => {
   const mins = Math.round((Date.now() - ts) / 60000);
-  if (mins < 60) return `${Math.max(mins, 1)}m`;
+  if (mins < 60) return `${Math.max(mins, 1)}M`;
   const hrs = Math.round(mins / 60);
-  if (hrs < 24) return `${hrs}h`;
-  return `${Math.round(hrs / 24)}d`;
+  if (hrs < 24) return `${hrs}H`;
+  return `${Math.round(hrs / 24)}D`;
 };
 
 export default function Messages() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const { me, threadsOf, messagesOf, userById } = useStore();
+  const { me, threadsOf, messagesOf, userById, postById } = useStore();
   if (!me) return null;
 
   const threads = threadsOf(me.id);
@@ -27,41 +27,53 @@ export default function Messages() {
     <>
       <Header title="Messages" />
 
-      <ScrollView
-        contentContainerStyle={{ paddingHorizontal: space.lg, paddingBottom: insets.bottom + 120, gap: space.sm }}
-      >
+      <ScrollView contentContainerStyle={{ paddingHorizontal: space.lg, paddingBottom: insets.bottom + 120 }}>
         {threads.length === 0 ? (
-          <Card>
-            <Empty glyph="💬" title="No messages" />
-          </Card>
+          <Empty title="No messages" />
         ) : (
           threads.map((t) => {
             const otherId = t.participants.find((p) => p !== me.id) ?? t.participants[0];
             const other = userById(otherId);
+            const post = t.postId ? postById(t.postId) : undefined;
             const msgs = messagesOf(t.id);
-            const last = msgs[msgs.length - 1];
+            const lastText = [...msgs].reverse().find((m) => m.text)?.text;
+
             return (
-              <Card key={t.id} onPress={() => router.push(`/chat/${t.id}`)} style={{ padding: space.md }}>
-                <Row style={{ gap: space.md }}>
-                  <Avatar uri={other?.avatar} name={other?.name || '?'} />
-                  <View style={{ flex: 1 }}>
-                    <Row style={{ justifyContent: 'space-between' }}>
-                      <T size={15} weight="600" numberOfLines={1}>
+              <View key={t.id}>
+                <Rule />
+                <Pressable
+                  onPress={() => router.push(`/chat/${t.id}`)}
+                  style={{ flexDirection: 'row', gap: space.md, paddingVertical: space.lg, alignItems: 'center' }}
+                >
+                  {post ? <Photo uri={post.photos[0]} style={{ width: 52, height: 65 }} /> : null}
+
+                  <View style={{ flex: 1, gap: 4 }}>
+                    <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+                      <T size={10} color={theme.muted} style={{ letterSpacing: track.label, textTransform: 'uppercase' }}>
                         {other?.name || 'Beans user'}
                       </T>
-                      <T size={12} color={theme.muted}>
+                      <T size={9.5} color={theme.muted} style={{ letterSpacing: track.label }}>
                         {ago(t.lastAt)}
                       </T>
-                    </Row>
-                    <T size={13} color={theme.muted} numberOfLines={1}>
-                      {last?.orderId ? 'Order' : last?.postId ? 'Asked about a post' : (last?.text ?? '')}
+                    </View>
+
+                    {/* The preview is the name of the product or event. */}
+                    <T size={13} weight="400" numberOfLines={1}>
+                      {post ? post.caption || 'Post' : 'Direct message'}
                     </T>
+
+                    {lastText ? (
+                      <T size={11} weight="300" color={theme.muted} numberOfLines={1}>
+                        {lastText}
+                      </T>
+                    ) : null}
                   </View>
-                </Row>
-              </Card>
+                </Pressable>
+              </View>
             );
           })
         )}
+        <Rule />
       </ScrollView>
     </>
   );

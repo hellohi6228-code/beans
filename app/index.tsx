@@ -10,7 +10,7 @@ export default function Index() {
   if (!hydrated) {
     return (
       <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
-        <ActivityIndicator color={theme.accent} />
+        <ActivityIndicator color={theme.ink} />
       </View>
     );
   }

@@ -1,13 +1,15 @@
 import { useRouter } from 'expo-router';
 import React, { useMemo } from 'react';
-import { ScrollView, View } from 'react-native';
+import { Dimensions, Pressable, ScrollView, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Header } from '../src/components/Header';
-import { Card, Chip, Empty, Photo, Row, T } from '../src/components/ui';
+import { Empty, Photo, T } from '../src/components/ui';
 import { useStore } from '../src/store';
-import { space, theme } from '../src/theme';
-import { SUPPLIER_LABEL } from '../src/types';
-import { money, priceParts, weightParts } from '../src/units';
+import { space, theme, track } from '../src/theme';
+import { priceParts, weightParts } from '../src/units';
+
+const W = Dimensions.get('window').width;
+const COL = (W - space.lg * 2 - 2) / 2;
 
 export default function Results() {
   const router = useRouter();
@@ -28,7 +30,7 @@ export default function Results() {
     return (
       <>
         <Header back title="Results" />
-        <Empty glyph="🔍" title="No amount set" />
+        <Empty title="No amount set" />
       </>
     );
   }
@@ -43,55 +45,38 @@ export default function Results() {
         subtitle={req.shippingIncluded ? 'Shipping included' : 'Shipping separate'}
       />
 
-      <ScrollView
-        contentContainerStyle={{ paddingHorizontal: space.lg, paddingBottom: insets.bottom + 120, gap: space.md }}
-      >
+      <ScrollView contentContainerStyle={{ paddingHorizontal: space.lg, paddingBottom: insets.bottom + 120 }}>
         {matches.length === 0 ? (
-          <Card>
-            <Empty glyph="📭" title="Nothing yet" />
-          </Card>
+          <Empty title="Nothing yet" />
         ) : (
-          matches.map((p) => {
-            const l = p.listing!;
-            const seller = userById(p.userId);
-            const price = priceParts(l.pricePerKg);
-            const lot = weightParts(l.lotKg);
-            const forYou = Math.min(req.qtyKg, l.lotKg);
-            return (
-              <Card key={p.id} onPress={() => router.push(`/post/${p.id}`)} style={{ padding: space.md }}>
-                <Row style={{ alignItems: 'flex-start', gap: space.md }}>
-                  <Photo uri={p.photos[0]} style={{ width: 92, height: 92 }} />
-                  <View style={{ flex: 1, gap: 4 }}>
-                    <T size={15} weight="700" numberOfLines={2}>
+          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 2 }}>
+            {matches.map((p) => {
+              const l = p.listing!;
+              const seller = userById(p.userId);
+              return (
+                <Pressable key={p.id} onPress={() => router.push(`/post/${p.id}`)} style={{ width: COL }}>
+                  <Photo uri={p.photos[0]} style={{ width: COL, height: COL * 1.35 }} />
+                  <View style={{ paddingVertical: space.md, gap: 3 }}>
+                    <T size={12} weight="300" numberOfLines={1}>
                       {p.caption || 'Post'}
                     </T>
-                    <T size={12.5} color={theme.muted} numberOfLines={1}>
+                    <T size={9.5} color={theme.muted} style={{ letterSpacing: track.label, textTransform: 'uppercase' }}>
                       {seller?.name || 'Beans user'}
-                      {seller?.supplierType ? ` · ${SUPPLIER_LABEL[seller.supplierType]}` : ''}
                     </T>
-                    <Row style={{ gap: 6, marginTop: 2 }}>
-                      <T size={15} weight="700" color={theme.accent}>
-                        {price.perKg}
-                      </T>
-                      <T size={13} color={theme.inkSoft}>
-                        · {price.perLb}
-                      </T>
-                    </Row>
-                    <T size={12.5} color={theme.inkSoft}>
-                      {lot.kg} / {lot.lb}
+                    <T size={12} weight="400" style={{ marginTop: 2 }}>
+                      {priceParts(l.pricePerKg).perKg}
                     </T>
-                    <Row style={{ gap: 6, marginTop: 4, flexWrap: 'wrap' }}>
-                      <Chip
-                        label={l.shippingIncluded ? 'Shipping included' : 'Shipping not included'}
-                        tone={l.shippingIncluded ? 'good' : 'warn'}
-                      />
-                      <Chip label={`${money(l.pricePerKg * forYou)} for you`} tone="gold" />
-                    </Row>
+                    <T size={10} color={theme.inkSoft}>
+                      {priceParts(l.pricePerKg).perLb}
+                    </T>
+                    <T size={9.5} color={theme.muted} style={{ letterSpacing: track.label }}>
+                      {weightParts(l.lotKg).kg} / {weightParts(l.lotKg).lb}
+                    </T>
                   </View>
-                </Row>
-              </Card>
-            );
-          })
+                </Pressable>
+              );
+            })}
+          </View>
         )}
       </ScrollView>
     </>

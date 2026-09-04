@@ -4,54 +4,43 @@ import { Dimensions, ScrollView, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Header } from '../../src/components/Header';
 import { PostTile } from '../../src/components/PostTile';
-import { Avatar, Btn, Card, Empty, Photo, Row, Stars, Sub, T } from '../../src/components/ui';
+import { Avatar, Btn, Empty, Row, Rule, Sub, T } from '../../src/components/ui';
 import { useStore } from '../../src/store';
-import { space, theme } from '../../src/theme';
+import { space, theme, track } from '../../src/theme';
 import { SUPPLIER_LABEL } from '../../src/types';
 
 const W = Dimensions.get('window').width;
-const TILE = (W - space.lg * 2 - space.xs * 2) / 3;
+const TILE = (W - space.lg * 2 - 4) / 3;
 
 export default function BusinessProfile() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const { userById, postsOf, reviewsOfSupplier, ratingOf, openThread, me } = useStore();
+  const { userById, postsOf, openThread, me } = useStore();
 
   const user = userById(String(id));
   if (!user) return <Header back title="Not found" />;
 
   const posts = postsOf(user.id);
-  const reviews = reviewsOfSupplier(user.id);
-  const rating = ratingOf(user.id);
   const mine = me?.id === user.id;
 
   return (
     <>
       <Header back title={user.name || 'Profile'} />
 
-      <ScrollView
-        contentContainerStyle={{ paddingHorizontal: space.lg, paddingBottom: insets.bottom + 120, gap: space.md }}
-      >
-        <Card style={{ gap: space.md }}>
+      <ScrollView contentContainerStyle={{ paddingHorizontal: space.lg, paddingBottom: insets.bottom + 120 }}>
+        <Rule />
+        <View style={{ paddingVertical: space.lg, gap: space.lg }}>
           <Row style={{ gap: space.lg }}>
-            <Avatar uri={user.avatar} name={user.name || '?'} size={72} />
-            <View style={{ flex: 1, gap: 2 }}>
-              <T size={18} weight="700">
+            <Avatar uri={user.avatar} name={user.name || ''} size={64} />
+            <View style={{ flex: 1, gap: 4 }}>
+              <T size={16} weight="400" style={{ letterSpacing: track.title }}>
                 {user.name || 'Beans user'}
               </T>
               {user.supplierType ? (
-                <T size={13} color={theme.muted}>
+                <T size={10} color={theme.muted} style={{ letterSpacing: track.label, textTransform: 'uppercase' }}>
                   {SUPPLIER_LABEL[user.supplierType]}
                 </T>
-              ) : null}
-              {rating.count ? (
-                <Row style={{ gap: 6 }}>
-                  <Stars value={rating.avg} />
-                  <T size={12.5} color={theme.muted}>
-                    {rating.avg.toFixed(1)} ({rating.count})
-                  </T>
-                </Row>
               ) : null}
             </View>
           </Row>
@@ -59,46 +48,21 @@ export default function BusinessProfile() {
           {user.bio ? <Sub>{user.bio}</Sub> : null}
 
           {!mine && me ? (
-            <Btn title="Message" kind="soft" onPress={() => router.push(`/chat/${openThread(user.id)}`)} />
+            <Btn title="Message" kind="outline" onPress={() => router.push(`/chat/${openThread(user.id)}`)} />
           ) : null}
-        </Card>
+        </View>
+
+        <Rule />
 
         {posts.length === 0 ? (
-          <Card>
-            <Empty glyph="📷" title="No posts" />
-          </Card>
+          <Empty title="No posts" />
         ) : (
-          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: space.xs }}>
+          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 2, paddingTop: space.md }}>
             {posts.map((p) => (
               <PostTile key={p.id} post={p} size={TILE} />
             ))}
           </View>
         )}
-
-        {reviews.map((r) => {
-          const author = userById(r.customerId);
-          return (
-            <Card key={r.id} style={{ padding: space.md, gap: space.xs }}>
-              <Row style={{ gap: space.sm }}>
-                <Avatar name={author?.name || '?'} uri={author?.avatar} size={32} />
-                <View style={{ flex: 1 }}>
-                  <T size={14} weight="600">
-                    {author?.name || 'Buyer'}
-                  </T>
-                  <Stars value={r.rating} />
-                </View>
-              </Row>
-              <Sub>{r.text}</Sub>
-              {r.photos.length ? (
-                <Row style={{ gap: space.xs }}>
-                  {r.photos.map((uri, i) => (
-                    <Photo key={i} uri={uri} style={{ width: 64, height: 64 }} radius={10} />
-                  ))}
-                </Row>
-              ) : null}
-            </Card>
-          );
-        })}
       </ScrollView>
     </>
   );

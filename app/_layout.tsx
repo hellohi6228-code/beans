@@ -4,6 +4,7 @@ import React from 'react';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { DemoBar } from '../src/components/DemoBar';
+import { FloatingNav } from '../src/components/FloatingNav';
 import { Screen } from '../src/components/ui';
 import { StoreProvider } from '../src/store';
 
@@ -27,6 +28,8 @@ export default function RootLayout() {
               <Stack.Screen name="new-post" options={{ presentation: 'modal', animation: 'slide_from_bottom' }} />
               <Stack.Screen name="edit-profile" options={{ presentation: 'modal', animation: 'slide_from_bottom' }} />
             </Stack>
+            {/* Above every screen, not just the tabs. */}
+            <FloatingNav />
           </Screen>
         </StoreProvider>
       </SafeAreaProvider>

@@ -1,7 +1,7 @@
 import * as ImagePicker from 'expo-image-picker';
 import React, { useState } from 'react';
-import { Alert, Modal, Pressable, View } from 'react-native';
-import { radius, shadow, space, theme } from '../theme';
+import { Alert, Modal, Pressable, StyleSheet, View } from 'react-native';
+import { space, theme } from '../theme';
 import { Label, Photo, T } from './ui';
 
 /**
@@ -72,7 +72,6 @@ export function PhotoPicker({
                     right: -6,
                     width: 24,
                     height: 24,
-                    borderRadius: 12,
                     backgroundColor: theme.ink,
                     alignItems: 'center',
                     justifyContent: 'center',
@@ -94,16 +93,15 @@ export function PhotoPicker({
               style={{
                 flex: 1,
                 aspectRatio: 1,
-                borderRadius: radius.md,
-                borderWidth: 1,
+                borderWidth: StyleSheet.hairlineWidth,
                 borderStyle: 'dashed',
-                borderColor: isNext ? theme.accent : theme.line,
-                backgroundColor: 'rgba(255,255,255,0.5)',
+                borderColor: isNext ? theme.ink : theme.line,
+                backgroundColor: 'transparent',
                 alignItems: 'center',
                 justifyContent: 'center',
               }}
             >
-              <T size={26} color={isNext ? theme.accent : theme.line}>
+              <T size={26} color={isNext ? theme.ink : theme.line}>
                 +
               </T>
             </Pressable>
@@ -114,24 +112,23 @@ export function PhotoPicker({
       <Modal visible={asking} transparent animationType="fade" onRequestClose={() => setAsking(false)}>
         <Pressable
           onPress={() => setAsking(false)}
-          style={{ flex: 1, backgroundColor: 'rgba(20,32,42,0.35)', justifyContent: 'flex-end', padding: space.lg }}
+          style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.35)', justifyContent: 'flex-end', padding: space.lg }}
         >
           <View
             style={{
-              backgroundColor: theme.cardSolid,
-              borderRadius: radius.lg,
-              overflow: 'hidden',
-              ...shadow,
+              backgroundColor: theme.surface,
+              borderWidth: StyleSheet.hairlineWidth,
+              borderColor: theme.ink,
             }}
           >
             <Pressable onPress={shoot} style={{ padding: space.lg, alignItems: 'center' }}>
-              <T size={16} weight="600" color={theme.accent}>
+              <T size={16} weight="600" color={theme.ink}>
                 Take a picture
               </T>
             </Pressable>
             <View style={{ height: 1, backgroundColor: theme.line }} />
             <Pressable onPress={upload} style={{ padding: space.lg, alignItems: 'center' }}>
-              <T size={16} weight="600" color={theme.accent}>
+              <T size={16} weight="600" color={theme.ink}>
                 Upload a picture
               </T>
             </Pressable>

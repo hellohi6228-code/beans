@@ -1,11 +1,11 @@
 import { useRouter } from 'expo-router';
 import React, { useState } from 'react';
-import { KeyboardAvoidingView, Platform, Pressable, ScrollView, View } from 'react-native';
+import { KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { Header } from '../src/components/Header';
 import { PhotoPicker } from '../src/components/PhotoPicker';
-import { Btn, Card, Field, Label, Row, T } from '../src/components/ui';
+import { Btn, Field, Label, T } from '../src/components/ui';
 import { useStore } from '../src/store';
-import { radius, space, theme } from '../src/theme';
+import { space, theme, track } from '../src/theme';
 import { SUPPLIER_LABEL, SupplierType } from '../src/types';
 
 type Choice = SupplierType | 'none';
@@ -25,9 +25,7 @@ export default function EditProfile() {
   const [name, setName] = useState(me?.name ?? '');
   const [bio, setBio] = useState(me?.bio ?? '');
   const [avatar, setAvatar] = useState<string[]>(me?.avatar ? [me.avatar] : []);
-  const [choice, setChoice] = useState<Choice>(
-    me?.role === 'supplier' ? (me.supplierType ?? 'farmer') : 'none'
-  );
+  const [choice, setChoice] = useState<Choice>(me?.role === 'supplier' ? (me.supplierType ?? 'farmer') : 'none');
   const [open, setOpen] = useState(false);
 
   if (!me) return null;
@@ -50,64 +48,69 @@ export default function EditProfile() {
       <Header back title="Edit profile" />
 
       <ScrollView
-        contentContainerStyle={{ padding: space.lg, paddingTop: 0, gap: space.lg }}
+        contentContainerStyle={{ paddingHorizontal: space.lg, paddingBottom: space.xxl, gap: space.xl }}
         keyboardShouldPersistTaps="handled"
       >
-        <Card style={{ gap: space.lg }}>
-          <PhotoPicker photos={avatar} onChange={setAvatar} max={1} label="Picture" />
+        <PhotoPicker photos={avatar} onChange={setAvatar} max={1} label="Picture" />
 
-          <Field label="Name" value={name} onChangeText={setName} placeholder="Your name" />
+        <Field label="Name" value={name} onChangeText={setName} placeholder="Your name" />
 
-          <Field label="Bio" value={bio} onChangeText={setBio} multiline placeholder="Anything you like" />
+        <Field label="Bio" value={bio} onChangeText={setBio} multiline placeholder="Anything you like" />
 
-          {/* Dropdown: are you selling, and as what */}
-          <View style={{ gap: space.xs }}>
-            <Label>Supplying</Label>
-            <Pressable
-              onPress={() => setOpen((v) => !v)}
-              style={{
-                height: 50,
-                borderRadius: radius.md,
-                borderWidth: 1,
-                borderColor: theme.line,
-                backgroundColor: theme.cardSolid,
-                paddingHorizontal: space.md,
-                flexDirection: 'row',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-              }}
-            >
-              <T size={16}>{current.label}</T>
-              <T size={13} color={theme.muted}>
-                {open ? '▲' : '▼'}
-              </T>
-            </Pressable>
+        <View style={{ gap: space.sm }}>
+          <Label>Supplying</Label>
+          <Pressable
+            onPress={() => setOpen((v) => !v)}
+            style={{
+              borderBottomWidth: StyleSheet.hairlineWidth,
+              borderBottomColor: theme.ink,
+              paddingVertical: 10,
+              flexDirection: 'row',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+            }}
+          >
+            <T size={15} weight="300">
+              {current.label}
+            </T>
+            <T size={10} color={theme.muted}>
+              {open ? '▲' : '▼'}
+            </T>
+          </Pressable>
 
-            {open ? (
-              <Card style={{ padding: 4, gap: 0 }}>
-                {OPTIONS.map((o) => (
-                  <Pressable
-                    key={o.value}
-                    onPress={() => {
-                      setChoice(o.value);
-                      setOpen(false);
-                    }}
-                    style={{ paddingVertical: 12, paddingHorizontal: space.md, borderRadius: radius.sm }}
+          {open ? (
+            <View style={{ borderWidth: StyleSheet.hairlineWidth, borderColor: theme.line }}>
+              {OPTIONS.map((o, i) => (
+                <Pressable
+                  key={o.value}
+                  onPress={() => {
+                    setChoice(o.value);
+                    setOpen(false);
+                  }}
+                  style={{
+                    paddingVertical: 13,
+                    paddingHorizontal: space.md,
+                    borderTopWidth: i === 0 ? 0 : StyleSheet.hairlineWidth,
+                    borderTopColor: theme.lineSoft,
+                  }}
+                >
+                  <T
+                    size={11}
+                    weight={o.value === choice ? '600' : '400'}
+                    style={{ letterSpacing: track.button, textTransform: 'uppercase' }}
                   >
-                    <T size={15} weight={o.value === choice ? '700' : '500'} color={o.value === choice ? theme.accent : theme.ink}>
-                      {o.label}
-                    </T>
-                  </Pressable>
-                ))}
-              </Card>
-            ) : null}
-          </View>
-        </Card>
+                    {o.label}
+                  </T>
+                </Pressable>
+              ))}
+            </View>
+          ) : null}
+        </View>
 
-        <Row style={{ gap: space.sm }}>
-          <Btn title="Cancel" kind="ghost" onPress={() => router.back()} style={{ flex: 1 }} />
-          <Btn title="Save" onPress={save} style={{ flex: 2 }} />
-        </Row>
+        <View style={{ gap: space.md }}>
+          <Btn title="Save" onPress={save} />
+          <Btn title="Cancel" kind="text" onPress={() => router.back()} />
+        </View>
       </ScrollView>
     </KeyboardAvoidingView>
   );

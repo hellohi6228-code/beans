@@ -1,41 +1,49 @@
 import { usePathname, useRouter } from 'expo-router';
 import React, { useRef, useState } from 'react';
-import { Animated, Dimensions, PanResponder, Pressable, View } from 'react-native';
-import { radius, shadow, space, theme } from '../theme';
+import { Animated, Dimensions, PanResponder, Pressable, StyleSheet, View } from 'react-native';
+import { useStore } from '../store';
+import { space, theme, track } from '../theme';
 import { T } from './ui';
 
-const SIZE = 56;
+const SIZE = 52;
 const { width: W, height: H } = Dimensions.get('window');
 
-/** Drag it anywhere, tap it for the menu. */
+/** Drag it anywhere, tap it for the menu. Lives above every screen. */
 export function FloatingNav() {
   const router = useRouter();
   const path = usePathname();
+  const { me } = useStore();
   const [open, setOpen] = useState(false);
 
-  const pos = useRef(new Animated.ValueXY({ x: W - SIZE - 20, y: H - SIZE - 100 })).current;
+  // Listing only exists for accounts that are currently supplying.
+  const items = [
+    { label: 'Find', href: '/home' },
+    { label: 'Post', href: '/new-post' },
+    ...(me?.role === 'supplier' ? [{ label: 'Listing', href: '/listings' }] : []),
+    { label: 'Messages', href: '/messages' },
+    { label: 'Profile', href: '/profile' },
+  ];
+
+  const pos = useRef(new Animated.ValueXY({ x: W - SIZE - 18, y: H - SIZE - 90 })).current;
   const dragged = useRef(false);
 
   const pan = useRef(
     PanResponder.create({
-      onMoveShouldSetPanResponder: (_, g) => Math.abs(g.dx) > 4 || Math.abs(g.dy) > 4,
-      onPanResponderGrant: () => {
-        dragged.current = false;
-        pos.extractOffset();
-      },
+      // Only take over once it is clearly a drag, so taps always reach the button.
+      onMoveShouldSetPanResponder: (_, g) => Math.abs(g.dx) > 6 || Math.abs(g.dy) > 6,
+      onPanResponderGrant: () => pos.extractOffset(),
       onPanResponderMove: (_, g) => {
         dragged.current = true;
         pos.setValue({ x: g.dx, y: g.dy });
       },
       onPanResponderRelease: () => {
         pos.flattenOffset();
-        // Keep it on screen.
         const x = (pos.x as any)._value;
         const y = (pos.y as any)._value;
         Animated.spring(pos, {
           toValue: {
             x: Math.min(Math.max(x, 12), W - SIZE - 12),
-            y: Math.min(Math.max(y, 50), H - SIZE - 40),
+            y: Math.min(Math.max(y, 60), H - SIZE - 30),
           },
           useNativeDriver: false,
           friction: 8,
@@ -43,13 +51,6 @@ export function FloatingNav() {
       },
     })
   ).current;
-
-  const items = [
-    { label: 'Find beans', glyph: '🔍', href: '/home' },
-    { label: 'New post', glyph: '➕', href: '/new-post' },
-    { label: 'Messages', glyph: '💬', href: '/messages' },
-    { label: 'Profile', glyph: '👤', href: '/profile' },
-  ];
 
   const go = (href: string) => {
     setOpen(false);
@@ -77,33 +78,33 @@ export function FloatingNav() {
           <View
             style={{
               position: 'absolute',
-              bottom: SIZE + 10,
+              bottom: SIZE + 8,
               right: 0,
-              backgroundColor: theme.cardSolid,
-              borderRadius: radius.lg,
-              paddingVertical: space.xs,
-              minWidth: 172,
-              borderWidth: 1,
-              borderColor: theme.line,
-              ...shadow,
+              backgroundColor: theme.surface,
+              borderWidth: StyleSheet.hairlineWidth,
+              borderColor: theme.ink,
+              minWidth: 150,
             }}
           >
-            {items.map((it) => {
+            {items.map((it, i) => {
               const on = path === it.href;
               return (
                 <Pressable
                   key={it.href}
                   onPress={() => go(it.href)}
                   style={{
-                    flexDirection: 'row',
-                    alignItems: 'center',
-                    gap: space.md,
-                    paddingVertical: 11,
+                    paddingVertical: 14,
                     paddingHorizontal: space.lg,
+                    borderTopWidth: i === 0 ? 0 : StyleSheet.hairlineWidth,
+                    borderTopColor: theme.lineSoft,
                   }}
                 >
-                  <T size={17}>{it.glyph}</T>
-                  <T size={15} weight={on ? '700' : '500'} color={on ? theme.accent : theme.ink}>
+                  <T
+                    size={11}
+                    weight={on ? '600' : '400'}
+                    color={on ? theme.ink : theme.inkSoft}
+                    style={{ letterSpacing: track.button, textTransform: 'uppercase' }}
+                  >
                     {it.label}
                   </T>
                 </Pressable>
@@ -113,6 +114,10 @@ export function FloatingNav() {
         ) : null}
 
         <Pressable
+          // Reset before every press so a previous drag can never swallow a tap.
+          onPressIn={() => {
+            dragged.current = false;
+          }}
           onPress={() => {
             if (!dragged.current) setOpen((v) => !v);
           }}
@@ -120,16 +125,13 @@ export function FloatingNav() {
             width: SIZE,
             height: SIZE,
             borderRadius: SIZE / 2,
-            backgroundColor: theme.accent,
+            backgroundColor: theme.ink,
             alignItems: 'center',
             justifyContent: 'center',
-            ...shadow,
-            shadowOpacity: 0.2,
-            elevation: 6,
           }}
         >
-          <T size={22} color="#fff">
-            {open ? '×' : '☕'}
+          <T size={13} weight="500" color="#fff" style={{ letterSpacing: 1 }}>
+            {open ? '×' : '≡'}
           </T>
         </Pressable>
       </Animated.View>

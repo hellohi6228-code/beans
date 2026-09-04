@@ -1,31 +1,23 @@
+/**
+ * Editorial, Zara-ish: near-white ground, black type, hairlines instead of
+ * cards, no shadows, no rounded corners, a lot of air.
+ */
 export const theme = {
-  // Light blue -> very light grey, used as the app-wide background gradient.
-  gradient: ['#CFE5F7', '#DFEAF4', '#F2F4F5'] as const,
-  gradientSoft: ['#E6F1FA', '#F1F4F6'] as const,
-  ink: '#16232E',
-  inkSoft: '#43586A',
-  muted: '#7C8B99',
-  line: '#D9E3EB',
-  card: 'rgba(255,255,255,0.86)',
-  cardSolid: '#FFFFFF',
-  accent: '#2C7CB5',
-  accentSoft: '#E3F0FA',
-  good: '#2F855A',
-  goodSoft: '#E4F2EA',
-  warn: '#B0492F',
-  warnSoft: '#FBEAE5',
-  gold: '#B8862B',
-  goldSoft: '#FBF1DD',
+  // The brand gradient, kept very quiet so it reads as paper.
+  gradient: ['#E7EFF6', '#F6F7F8', '#FAFAFA'] as const,
+  ink: '#000000',
+  inkSoft: '#3A3A3A',
+  muted: '#8C8C8C',
+  line: '#DEDEDE',
+  lineSoft: '#EDEDED',
+  surface: '#FFFFFF',
+  warn: '#9B1B1B',
 };
 
-export const radius = { sm: 8, md: 14, lg: 20, pill: 999 };
+/** Square corners everywhere. */
+export const radius = { sm: 0, md: 0, lg: 0, pill: 999 };
 
-export const space = { xs: 4, sm: 8, md: 12, lg: 16, xl: 24, xxl: 32 };
+export const space = { xs: 4, sm: 8, md: 12, lg: 20, xl: 32, xxl: 48 };
 
-export const shadow = {
-  shadowColor: '#1B3A50',
-  shadowOpacity: 0.07,
-  shadowRadius: 12,
-  shadowOffset: { width: 0, height: 4 },
-  elevation: 2,
-};
+/** Tracking that makes small uppercase type read as a label. */
+export const track = { label: 1.6, button: 1.4, title: 0.2 };
