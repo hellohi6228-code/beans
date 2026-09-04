@@ -25,22 +25,14 @@ export default function Messages() {
 
   return (
     <>
-      <Header title="Messages" subtitle="Orders, posts, and everything else" />
+      <Header title="Messages" />
 
       <ScrollView
         contentContainerStyle={{ paddingHorizontal: space.lg, paddingBottom: insets.bottom + 120, gap: space.sm }}
       >
         {threads.length === 0 ? (
           <Card>
-            <Empty
-              glyph="💬"
-              title="No conversations yet"
-              body={
-                me.role === 'customer'
-                  ? 'Find beans, tap Order, and the chat opens here.'
-                  : 'When a buyer orders one of your listings, the chat lands here.'
-              }
-            />
+            <Empty glyph="💬" title="No messages" />
           </Card>
         ) : (
           threads.map((t) => {

@@ -37,7 +37,7 @@ export default function Results() {
     return (
       <>
         <Header back title="Results" />
-        <Empty glyph="🔍" title="Tell us how much you need" body="Go back and enter an amount in kg or lb." />
+        <Empty glyph="🔍" title="No amount set" />
       </>
     );
   }
@@ -49,34 +49,17 @@ export default function Results() {
       <Header
         back
         title={`${w.kg} / ${w.lb}`}
-        subtitle={req.shippingIncluded ? 'Shipping included · delivered to your address' : 'Shipping arranged separately'}
+        subtitle={req.shippingIncluded ? 'Shipping included' : 'Shipping separate'}
       />
 
       <ScrollView
         contentContainerStyle={{ paddingHorizontal: space.lg, paddingBottom: insets.bottom + space.xxl, gap: space.md }}
       >
-        {req.shippingIncluded && req.address ? (
-          <Card style={{ padding: space.md, gap: 2 }}>
-            <Label>Shipping to</Label>
-            <T size={13.5} color={theme.inkSoft}>
-              {req.address}
-            </T>
-          </Card>
-        ) : null}
-
-        <Label>{covers.length} listings can cover your amount</Label>
+        <Label>Enough for you</Label>
 
         {covers.length === 0 ? (
           <Card>
-            <Empty
-              glyph="📭"
-              title="Nothing that big right now"
-              body={
-                req.shippingIncluded
-                  ? 'Try unticking shipping included — some suppliers quote freight separately.'
-                  : 'Try a smaller amount, or message a supplier directly.'
-              }
-            />
+            <Empty glyph="📭" title="Nothing this big" body="Try a smaller amount." />
           </Card>
         ) : (
           covers.map((l) => (
@@ -86,7 +69,7 @@ export default function Results() {
 
         {smaller.length ? (
           <>
-            <Label>Smaller lots — you would need more than one</Label>
+            <Label>Smaller lots</Label>
             {smaller.map((l) => (
               <ListingCard key={l.id} listing={l} supplier={userById(l.supplierId)} />
             ))}
@@ -94,7 +77,6 @@ export default function Results() {
         ) : null}
 
         <Label>Suppliers</Label>
-        <Sub>Browse a business, its posts and everything it has listed.</Sub>
 
         {suppliers.map((s) => {
           const r = ratingOf(s.id);

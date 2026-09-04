@@ -47,14 +47,14 @@ export default function NewListing() {
   };
 
   if (me?.role !== 'supplier') {
-    return <Header back title="Only suppliers can list beans" />;
+    return <Header back title="Suppliers only" />;
   }
 
   const p = priceBothPreview(pricePerKg);
 
   return (
     <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-      <Header back title="New listing" subtitle="One price, kg and lb, shipping stated up front" />
+      <Header back title="New listing" />
 
       <ScrollView
         contentContainerStyle={{ padding: space.lg, paddingTop: 0, gap: space.md, paddingBottom: space.xxl }}
@@ -65,8 +65,7 @@ export default function NewListing() {
             photos={photos}
             onChange={setPhotos}
             max={3}
-            label="Pictures of the beans"
-            hint="One to three. Take them now or upload from your phone."
+            label="Photos"
           />
         </Card>
 
@@ -79,7 +78,7 @@ export default function NewListing() {
           />
 
           <View style={{ gap: space.sm }}>
-            <Label>Enter your numbers in</Label>
+            <Label>Units</Label>
             <Segmented
               value={unit}
               onChange={setUnit}
@@ -88,7 +87,6 @@ export default function NewListing() {
                 { value: 'lb', label: 'Pounds' },
               ]}
             />
-            <Sub>Buyers always see both. Type in whichever you use.</Sub>
           </View>
 
           <Row style={{ gap: space.sm, alignItems: 'flex-start' }}>
@@ -112,7 +110,7 @@ export default function NewListing() {
 
           {pricePerKg > 0 || lotKg > 0 ? (
             <Card style={{ backgroundColor: theme.accentSoft, borderColor: theme.accentSoft, padding: space.md, gap: 4 }}>
-              <Label>Buyers will see</Label>
+              <Label>Buyers see</Label>
               {pricePerKg > 0 ? (
                 <T size={15} weight="700" color={theme.accent}>
                   {p.perKg} · {p.perLb}
@@ -132,17 +130,15 @@ export default function NewListing() {
           <Checkbox
             checked={shippingIncluded}
             onToggle={() => setShippingIncluded((v) => !v)}
-            label="Shipping included in this price"
-            sublabel="US shipping. Leave unticked if the buyer arranges freight."
+            label="Shipping included"
           />
 
           <Card style={{ backgroundColor: theme.warnSoft, borderColor: theme.warnSoft, padding: space.md }}>
             <T size={13} weight="700" color={theme.warn}>
-              Zero-tolerance price policy
+              This is the final price
             </T>
-            <T size={12.5} color={theme.inkSoft} style={{ marginTop: 2, lineHeight: 18 }}>
-              What you type here is the total a buyer pays on Beans — processing, banking and tax included. Asking for
-              a different number once they are in the chat is a reportable discrepancy.
+            <T size={12.5} color={theme.inkSoft} style={{ marginTop: 2 }}>
+              Fees and tax included. Asking for more is reportable.
             </T>
           </Card>
         </Card>
@@ -152,19 +148,19 @@ export default function NewListing() {
             <Field label="Origin" value={origin} onChangeText={setOrigin} placeholder="Colombia" style={{ flex: 1 }} />
             <Field label="Process" value={process} onChangeText={setProcess} placeholder="Washed" style={{ flex: 1 }} />
           </Row>
-          <Field label="Roast" value={roast} onChangeText={setRoast} placeholder="Green / Light / Medium" />
+          <Field label="Roast" value={roast} onChangeText={setRoast} placeholder="Green" />
           <Field
             label="Description"
             value={description}
             onChangeText={setDescription}
             multiline
-            placeholder="Altitude, harvest, cup notes, moisture, anything a buyer should know."
+            placeholder="Cup notes, altitude, harvest"
           />
         </Card>
 
         <Row style={{ gap: space.sm }}>
           <Btn title="Cancel" kind="ghost" onPress={() => router.back()} style={{ flex: 1 }} />
-          <Btn title="Publish listing" onPress={submit} disabled={!ready} style={{ flex: 2 }} />
+          <Btn title="Publish" onPress={submit} disabled={!ready} style={{ flex: 2 }} />
         </Row>
       </ScrollView>
     </KeyboardAvoidingView>

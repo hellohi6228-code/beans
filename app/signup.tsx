@@ -42,7 +42,7 @@ export default function Signup() {
 
   return (
     <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-      <Header back title={role === 'supplier' ? 'Set up your business' : 'Set up your profile'} />
+      <Header back title={role === 'supplier' ? 'Your business' : 'Your profile'} />
 
       <ScrollView
         contentContainerStyle={{ padding: space.lg, paddingTop: 0, gap: space.lg, paddingBottom: space.xxl }}
@@ -50,7 +50,7 @@ export default function Signup() {
       >
         {role === 'supplier' ? (
           <Card style={{ gap: space.md }}>
-            <Label>What kind of supplier are you</Label>
+            <Label>You are a</Label>
             <View style={{ gap: space.sm }}>
               {TYPES.map((t) => {
                 const on = t === type;
@@ -83,7 +83,7 @@ export default function Signup() {
             onChange={setAvatar}
             max={1}
             label="Profile picture"
-            hint="Optional. You can add it later."
+
           />
 
           <Field
@@ -117,30 +117,13 @@ export default function Signup() {
             value={bio}
             onChangeText={setBio}
             multiline
-            placeholder={
-              role === 'supplier'
-                ? 'Anything you want buyers to know about your business.'
-                : 'What you brew, what you are looking for.'
-            }
+            placeholder="Anything you like"
           />
         </Card>
 
-        {role === 'supplier' ? (
-          <Card style={{ backgroundColor: theme.warnSoft, borderColor: theme.warnSoft, gap: space.xs }}>
-            <T size={14} weight="700" color={theme.warn}>
-              One price, no surprises
-            </T>
-            <Sub>
-              The price you put on a listing is the whole price a buyer pays here — processing, banking and tax
-              included. Shipping is included only if you say so on the listing. Asking for more after the fact is a
-              reportable price discrepancy, and Beans has a zero-tolerance policy.
-            </Sub>
-          </Card>
-        ) : null}
-
         <Row style={{ gap: space.sm }}>
           <Btn title="Back" kind="ghost" onPress={() => router.back()} style={{ flex: 1 }} />
-          <Btn title="Create account" onPress={submit} disabled={!ready} style={{ flex: 2 }} />
+          <Btn title="Create" onPress={submit} disabled={!ready} style={{ flex: 2 }} />
         </Row>
       </ScrollView>
     </KeyboardAvoidingView>

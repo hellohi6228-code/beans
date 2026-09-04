@@ -127,7 +127,6 @@ export default function BusinessProfile() {
               <Empty
                 glyph="📷"
                 title="Nothing posted yet"
-                body={mine ? 'Post pictures of your shop, your events, your merchandise.' : undefined}
               />
             </Card>
           ) : (

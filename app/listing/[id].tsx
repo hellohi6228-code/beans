@@ -44,7 +44,7 @@ export default function ListingDetail() {
   });
 
   if (!listing || !supplier) {
-    return <Header back title="Listing not found" />;
+    return <Header back title="Not found" />;
   }
 
   const price = priceParts(listing.pricePerKg);
@@ -129,17 +129,6 @@ export default function ListingDetail() {
 
           <Sub>{listing.description}</Sub>
 
-          <Card style={{ backgroundColor: theme.accentSoft, borderColor: theme.accentSoft, padding: space.md }}>
-            <T size={13} weight="700" color={theme.accent}>
-              {listing.shippingIncluded
-                ? 'This price includes shipping within the US.'
-                : 'Shipping is arranged separately with the supplier.'}
-            </T>
-            <T size={12.5} color={theme.inkSoft} style={{ marginTop: 2 }}>
-              Processing, banking and tax are already in the listed price. If the supplier asks for anything more,
-              report it.
-            </T>
-          </Card>
         </Card>
 
         {/* Supplier */}
@@ -171,7 +160,7 @@ export default function ListingDetail() {
         {/* Order */}
         {me && !isMine ? (
           <Card style={{ gap: space.md }}>
-            <Label>How much do you want</Label>
+            <Label>How much</Label>
             <Row style={{ gap: space.sm, alignItems: 'flex-end' }}>
               <Field value={qty} onChangeText={setQty} keyboardType="decimal-pad" style={{ flex: 1 }} />
               <View style={{ width: 120 }}>
@@ -200,7 +189,7 @@ export default function ListingDetail() {
               <View>
                 <Label>Total</Label>
                 <T size={12.5} color={theme.muted}>
-                  {listing.shippingIncluded ? 'Shipping included' : 'Plus shipping, agreed in chat'}
+                  {listing.shippingIncluded ? 'Shipping included' : 'Plus shipping'}
                 </T>
               </View>
               <T size={26} weight="800">
@@ -208,18 +197,12 @@ export default function ListingDetail() {
               </T>
             </Row>
 
-            <Btn title="Order — opens a chat with the supplier" onPress={order} disabled={!canOrder} />
-            <T size={12} color={theme.muted} style={{ textAlign: 'center' }}>
-              Beans does not take payment. You and the supplier settle up however you both prefer.
-            </T>
+            <Btn title="Order" onPress={order} disabled={!canOrder} />
           </Card>
         ) : isMine ? (
           <Card style={{ padding: space.md }}>
             <T size={14} weight="700">
               This is your own listing
-            </T>
-            <T size={12.5} color={theme.muted}>
-              This is how buyers see it.
             </T>
           </Card>
         ) : null}
@@ -227,7 +210,7 @@ export default function ListingDetail() {
         {/* Reviews */}
         {reviews.length ? (
           <>
-            <Label>Recent reviews of this supplier</Label>
+            <Label>Reviews</Label>
             {reviews.map((r) => {
               const author = userById(r.customerId);
               return (
@@ -247,7 +230,7 @@ export default function ListingDetail() {
         ) : null}
 
         <Btn
-          title="Report a price discrepancy"
+          title="Report price"
           kind="danger"
           onPress={() => router.push(`/report/${listing.id}`)}
         />

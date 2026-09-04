@@ -16,25 +16,14 @@ export default function Reports() {
 
   return (
     <>
-      <Header back title="Price reports" subtitle="Filed against your listings" />
+      <Header back title="Price reports" />
 
       <ScrollView
         contentContainerStyle={{ paddingHorizontal: space.lg, paddingBottom: insets.bottom + space.xxl, gap: space.md }}
       >
-        <Card style={{ backgroundColor: theme.warnSoft, borderColor: theme.warnSoft, gap: space.xs }}>
-          <T size={14} weight="700" color={theme.warn}>
-            Zero-tolerance price policy
-          </T>
-          <Sub>
-            The price on your listing is the whole price a buyer pays here, with processing, banking and tax included.
-            Shipping counts only if the listing says it is included. What you charge on your own site or in your own
-            shop is up to you — this rule applies inside Beans.
-          </Sub>
-        </Card>
-
         {reports.length === 0 ? (
           <Card>
-            <Empty glyph="🛡️" title="No reports" body="Buyers have paid exactly what you listed. Keep it that way." />
+            <Empty glyph="🛡️" title="No reports" />
           </Card>
         ) : (
           reports.map((r) => {

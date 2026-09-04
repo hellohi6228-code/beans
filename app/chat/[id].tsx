@@ -18,7 +18,7 @@ export default function Chat() {
   const [draft, setDraft] = useState('');
 
   const thread = state.threads.find((t) => t.id === String(id));
-  if (!thread || !me) return <Header back title="Conversation not found" />;
+  if (!thread || !me) return <Header back title="Not found" />;
 
   const otherId = thread.participants.find((p) => p !== me.id) ?? thread.participants[0];
   const other = userById(otherId);
@@ -52,13 +52,6 @@ export default function Chat() {
         contentContainerStyle={{ paddingHorizontal: space.lg, paddingBottom: space.lg, gap: space.sm }}
         onContentSizeChange={() => scroller.current?.scrollToEnd({ animated: false })}
       >
-        <Card style={{ backgroundColor: theme.accentSoft, borderColor: theme.accentSoft, padding: space.md }}>
-          <T size={12.5} color={theme.inkSoft}>
-            Agree the details here and settle payment between yourselves. The price on the listing is the whole price
-            — if you are asked for more, use Report.
-          </T>
-        </Card>
-
         {messages.map((m) => {
           if (m.postId) {
             const post = state.posts.find((p) => p.id === m.postId);
@@ -66,10 +59,7 @@ export default function Chat() {
             const author = userById(post.userId);
             return (
               <Card key={m.id} onPress={() => router.push(`/post/${post.id}`)} style={{ padding: space.md, gap: space.sm }}>
-                <Label>
-                  {m.senderId === me.id ? 'You asked about' : 'Asked about'}{' '}
-                  {post.kind === 'event' ? 'this event' : 'this post'}
-                </Label>
+                <Label>{post.kind === 'event' ? 'Event' : 'Post'}</Label>
                 <Row style={{ gap: space.md }}>
                   <Photo
                     uri={post.photos[0]}
@@ -108,11 +98,11 @@ export default function Chat() {
             return (
               <Card key={m.id} style={{ gap: space.sm }}>
                 <Row style={{ justifyContent: 'space-between' }}>
-                  <Label>Order enquiry</Label>
+                  <Label>Order</Label>
                   <Chip
                     label={
                       order.status === 'inquiry'
-                        ? 'Awaiting supplier'
+                        ? 'Waiting'
                         : order.status === 'agreed'
                           ? 'Agreed'
                           : order.status === 'completed'
@@ -151,7 +141,7 @@ export default function Chat() {
                 <Row style={{ justifyContent: 'space-between' }}>
                   <View>
                     <T size={15} weight="700">
-                      Total to pay
+                      Total
                     </T>
                     <T size={12.5} color={order.shippingIncluded ? theme.good : theme.warn}>
                       {order.shippingIncluded ? 'Shipping included' : 'Shipping not included'}
@@ -183,14 +173,14 @@ export default function Chat() {
                   <Row style={{ gap: space.sm }}>
                     {order.status === 'inquiry' ? (
                       <Btn
-                        title="Confirm at listed price"
+                        title="Confirm"
                         onPress={() => setOrderStatus(order.id, 'agreed')}
                         style={{ flex: 1, height: 42 }}
                       />
                     ) : null}
                     {order.status === 'agreed' ? (
                       <Btn
-                        title="Mark completed"
+                        title="Mark done"
                         kind="soft"
                         onPress={() => setOrderStatus(order.id, 'completed')}
                         style={{ flex: 1, height: 42 }}

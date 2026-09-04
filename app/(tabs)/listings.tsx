@@ -48,9 +48,8 @@ export default function Listings() {
             onPress={() => router.push('/reports')}
           >
             <T size={14} weight="700" color={theme.warn}>
-              {reports.length} price discrepancy {reports.length === 1 ? 'report' : 'reports'}
+              {reports.length} price {reports.length === 1 ? 'report' : 'reports'}
             </T>
-            <Sub>A buyer says they were asked for a different price than the one you listed. Tap to read them.</Sub>
           </Card>
         ) : null}
 
@@ -58,18 +57,14 @@ export default function Listings() {
 
         {listings.length === 0 ? (
           <Card>
-            <Empty
-              glyph="🫘"
-              title="No listings yet"
-              body="Photograph a lot, name your price per kg or lb, and say whether shipping is included."
-            />
-            <Btn title="Create your first listing" onPress={() => router.push('/new-listing')} />
+            <Empty glyph="🫘" title="No listings yet" />
+            <Btn title="New listing" onPress={() => router.push('/new-listing')} />
           </Card>
         ) : (
           listings.map((l) => <ListingCard key={l.id} listing={l} supplier={me} />)
         )}
 
-        <Btn title="Post to your profile" kind="ghost" onPress={() => router.push('/new-post')} />
+        <Btn title="New post" kind="ghost" onPress={() => router.push('/new-post')} />
       </ScrollView>
     </>
   );

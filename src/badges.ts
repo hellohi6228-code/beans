@@ -31,7 +31,7 @@ export const BADGES: Badge[] = [
     name: 'First Pour',
     glyph: '☕',
     tier: 'bronze',
-    blurb: 'Place your first order.',
+    blurb: 'First order',
     progress: (c) => ({ have: Math.min(done(c).length, 1), need: 1 }),
   },
   {
@@ -39,7 +39,7 @@ export const BADGES: Badge[] = [
     name: 'Regular',
     glyph: '🔁',
     tier: 'bronze',
-    blurb: 'Three orders placed.',
+    blurb: '3 orders',
     progress: (c) => ({ have: Math.min(done(c).length, 3), need: 3 }),
   },
   {
@@ -47,7 +47,7 @@ export const BADGES: Badge[] = [
     name: 'Cellar Builder',
     glyph: '📦',
     tier: 'silver',
-    blurb: 'Ten orders placed.',
+    blurb: '10 orders',
     progress: (c) => ({ have: Math.min(done(c).length, 10), need: 10 }),
   },
   {
@@ -55,7 +55,7 @@ export const BADGES: Badge[] = [
     name: 'Note Taker',
     glyph: '✍️',
     tier: 'bronze',
-    blurb: 'Write your first review.',
+    blurb: 'First review',
     progress: (c) => ({ have: Math.min(c.reviews.length, 1), need: 1 }),
   },
   {
@@ -63,7 +63,7 @@ export const BADGES: Badge[] = [
     name: 'Cupping Panel',
     glyph: '🥄',
     tier: 'silver',
-    blurb: 'Write five reviews.',
+    blurb: '5 reviews',
     progress: (c) => ({ have: Math.min(c.reviews.length, 5), need: 5 }),
   },
   {
@@ -71,7 +71,7 @@ export const BADGES: Badge[] = [
     name: 'Show & Tell',
     glyph: '📸',
     tier: 'silver',
-    blurb: 'Add photos to three reviews.',
+    blurb: '3 reviews with photos',
     progress: (c) => ({ have: Math.min(c.reviews.filter((r) => r.photos.length > 0).length, 3), need: 3 }),
   },
   {
@@ -79,7 +79,7 @@ export const BADGES: Badge[] = [
     name: 'Farm Direct',
     glyph: '🌱',
     tier: 'bronze',
-    blurb: 'Buy straight from a farmer.',
+    blurb: 'Buy from a farmer',
     progress: (c) => ({ have: Math.min(typeCount(c, 'farmer'), 1), need: 1 }),
   },
   {
@@ -87,7 +87,7 @@ export const BADGES: Badge[] = [
     name: 'Pallet Club',
     glyph: '🚚',
     tier: 'silver',
-    blurb: 'Buy from a bulk seller.',
+    blurb: 'Buy from a bulk seller',
     progress: (c) => ({ have: Math.min(typeCount(c, 'bulk'), 1), need: 1 }),
   },
   {
@@ -95,7 +95,7 @@ export const BADGES: Badge[] = [
     name: 'Mail Order',
     glyph: '📮',
     tier: 'bronze',
-    blurb: 'Buy from an online retailer.',
+    blurb: 'Buy from an online shop',
     progress: (c) => ({ have: Math.min(typeCount(c, 'online_retail'), 1), need: 1 }),
   },
   {
@@ -103,7 +103,7 @@ export const BADGES: Badge[] = [
     name: 'Shop Local',
     glyph: '🏪',
     tier: 'bronze',
-    blurb: 'Buy from a coffee shop.',
+    blurb: 'Buy from a coffee shop',
     progress: (c) => ({ have: Math.min(typeCount(c, 'coffee_shop'), 1), need: 1 }),
   },
   {
@@ -111,7 +111,7 @@ export const BADGES: Badge[] = [
     name: 'Whole Chain',
     glyph: '🔗',
     tier: 'gold',
-    blurb: 'Buy from all four kinds of supplier.',
+    blurb: 'All 4 supplier types',
     progress: (c) => ({
       have: (['farmer', 'bulk', 'online_retail', 'coffee_shop'] as SupplierType[]).filter((t) => typeCount(c, t) > 0).length,
       need: 4,
@@ -122,7 +122,7 @@ export const BADGES: Badge[] = [
     name: 'Passport',
     glyph: '🗺️',
     tier: 'silver',
-    blurb: 'Beans from three origins.',
+    blurb: '3 origins',
     progress: (c) => ({ have: Math.min(origins(c).size, 3), need: 3 }),
   },
   {
@@ -130,7 +130,7 @@ export const BADGES: Badge[] = [
     name: 'Globetrotter',
     glyph: '🌍',
     tier: 'gold',
-    blurb: 'Beans from six origins.',
+    blurb: '6 origins',
     progress: (c) => ({ have: Math.min(origins(c).size, 6), need: 6 }),
   },
   {
@@ -138,7 +138,7 @@ export const BADGES: Badge[] = [
     name: 'Heavy Lifter',
     glyph: '🏋️',
     tier: 'gold',
-    blurb: 'Order 100 kg / 220.46 lb in total.',
+    blurb: '100 kg / 220.46 lb total',
     progress: (c) => ({
       have: Math.min(Math.round(done(c).reduce((s, o) => s + o.qtyKg, 0)), 100),
       need: 100,

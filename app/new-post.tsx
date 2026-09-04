@@ -39,12 +39,12 @@ export default function NewPost() {
         keyboardShouldPersistTaps="handled"
       >
         <Card>
-          <PhotoPicker photos={photos} onChange={setPhotos} max={3} hint="Up to three pictures." />
+          <PhotoPicker photos={photos} onChange={setPhotos} max={3} />
         </Card>
 
         <Card style={{ gap: space.lg }}>
           <View style={{ gap: space.sm }}>
-            <Label>What is this</Label>
+            <Label>Type</Label>
             <Segmented
               value={kind}
               onChange={pickKind}
@@ -59,8 +59,7 @@ export default function NewPost() {
           <Checkbox
             checked={contactable}
             onToggle={() => setContactable((v) => !v)}
-            label="Is this something you sell, or an event you host?"
-            sublabel="If it is, the picture gets a chat button so people can message you about it."
+            label="Something you sell, or an event?"
           />
 
           <Field
@@ -68,7 +67,6 @@ export default function NewPost() {
             value={caption}
             onChangeText={setCaption}
             multiline
-            placeholder="Say something about it."
           />
         </Card>
 

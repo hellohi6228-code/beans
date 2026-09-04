@@ -63,9 +63,8 @@ export default function EditProfile() {
               value={bio}
               onChangeText={setBio}
               multiline
-              placeholder="Write anything you like under your name."
+              placeholder="Anything you like"
             />
-            <Sub>Line breaks are kept exactly as you type them.</Sub>
           </View>
         </Card>
 

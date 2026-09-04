@@ -28,7 +28,7 @@ export default function Collection() {
 
   return (
     <>
-      <Header title="Collection" subtitle={`${earned.length} of ${badges.length} badges earned`} />
+      <Header title="Collection" />
 
       <ScrollView
         contentContainerStyle={{ paddingHorizontal: space.lg, paddingBottom: insets.bottom + 120, gap: space.md }}
@@ -42,13 +42,12 @@ export default function Collection() {
         {toReview.length ? (
           <Card style={{ backgroundColor: theme.goldSoft, borderColor: theme.goldSoft, gap: space.sm }}>
             <T size={15} weight="700" color={theme.gold}>
-              {toReview.length} order{toReview.length === 1 ? '' : 's'} waiting on your review
+              {toReview.length} order{toReview.length === 1 ? '' : 's'} to review
             </T>
-            <Sub>Reviews are how badges unlock — and how other buyers find honest suppliers.</Sub>
             {toReview.map((o) => (
               <Btn
                 key={o.id}
-                title={`Review ${listingById(o.listingId)?.title ?? 'your order'}`}
+                title={`Review ${listingById(o.listingId)?.title ?? 'order'}`}
                 kind="soft"
                 onPress={() => router.push(`/review/${o.id}`)}
                 style={{ height: 44 }}
@@ -60,7 +59,7 @@ export default function Collection() {
         <Label>Earned</Label>
         {earned.length === 0 ? (
           <Card>
-            <Sub>No badges yet. Your first order unlocks First Pour.</Sub>
+            <Sub>None yet.</Sub>
           </Card>
         ) : (
           <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: space.sm }}>
@@ -70,7 +69,7 @@ export default function Collection() {
           </View>
         )}
 
-        <Label>Still to unlock</Label>
+        <Label>Locked</Label>
         <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: space.sm }}>
           {locked.map((b) => (
             <BadgeTile key={b.badge.id} {...b} />

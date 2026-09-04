@@ -49,7 +49,7 @@ export default function Home() {
           <T size={34} weight="800" style={{ letterSpacing: -1 }}>
             Beans
           </T>
-          <Sub>How much coffee are you looking for?</Sub>
+          <Sub>How much coffee?</Sub>
         </View>
 
         <Card style={{ gap: space.lg }}>
@@ -88,11 +88,11 @@ export default function Home() {
               </View>
             </View>
 
-            <T size={13.5} color={theme.muted}>
-              {valid
-                ? `= ${weightParts(qtyKg).kg} / ${weightParts(qtyKg).lb}`
-                : 'Type an amount in kilograms or pounds — we show both everywhere.'}
-            </T>
+            {valid ? (
+              <T size={13.5} color={theme.muted}>
+                {weightParts(qtyKg).kg} / {weightParts(qtyKg).lb}
+              </T>
+            ) : null}
           </View>
 
           {/* Shipping, and where it is going. */}
@@ -101,18 +101,15 @@ export default function Home() {
               checked={shippingIncluded}
               onToggle={() => setShippingIncluded((v) => !v)}
               label="Shipping included"
-              sublabel="Only show listings where the price already covers delivery."
             />
 
             {shippingIncluded ? (
               <Field
-                label="Shipping address"
                 value={address}
                 onChangeText={setAddress}
-                placeholder="742 Evergreen Terrace, Denver, CO 80202"
+                placeholder="Shipping address"
                 multiline
                 style={{ marginTop: space.xs }}
-                hint="US addresses only."
               />
             ) : null}
           </View>

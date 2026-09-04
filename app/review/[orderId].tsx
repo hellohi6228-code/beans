@@ -52,14 +52,14 @@ export default function WriteReview() {
           <Card style={{ alignItems: 'center', gap: space.sm, paddingVertical: space.xl }}>
             <T size={40}>🎉</T>
             <T size={19} weight="700">
-              Thanks for the review
+              Review posted
             </T>
-            <Sub>Other buyers can now see how {supplier.name} handled this order.</Sub>
+
           </Card>
 
           {fresh.length ? (
             <Card style={{ backgroundColor: theme.goldSoft, borderColor: '#EBD9AF', gap: space.sm }}>
-              <Label>New badge{fresh.length === 1 ? '' : 's'} unlocked</Label>
+              <Label>Unlocked</Label>
               {fresh.map((b) => (
                 <Row key={b.badge.id} style={{ gap: space.md }}>
                   <T size={28}>{b.badge.glyph}</T>
@@ -76,7 +76,7 @@ export default function WriteReview() {
             </Card>
           ) : null}
 
-          <Btn title="See my collection" onPress={() => router.replace('/collection')} />
+          <Btn title="My collection" onPress={() => router.replace('/collection')} />
           <Btn title="Done" kind="ghost" onPress={() => router.replace('/home')} />
         </ScrollView>
       </>
@@ -85,7 +85,7 @@ export default function WriteReview() {
 
   return (
     <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-      <Header back title="Write a review" subtitle={supplier.name} />
+      <Header back title="Review" subtitle={supplier.name} />
 
       <ScrollView
         contentContainerStyle={{ padding: space.lg, paddingTop: 0, gap: space.md, paddingBottom: space.xxl }}
@@ -108,7 +108,7 @@ export default function WriteReview() {
 
         <Card style={{ gap: space.lg }}>
           <View style={{ gap: space.sm }}>
-            <Label>Your rating</Label>
+            <Label>Rating</Label>
             <Row style={{ gap: space.xs }}>
               {[1, 2, 3, 4, 5].map((n) => (
                 <Pressable key={n} onPress={() => setRating(n)} hitSlop={6}>
@@ -121,24 +121,17 @@ export default function WriteReview() {
           </View>
 
           <Field
-            label="How did it go"
+            label="How was it?"
             value={text}
             onChangeText={setText}
             multiline
-            placeholder="Was the coffee as described? Did the price match the listing?"
+            placeholder="Was it as described?"
           />
 
-          <PhotoPicker photos={photos} onChange={setPhotos} max={3} label="Photos" hint="Optional, up to three." />
+          <PhotoPicker photos={photos} onChange={setPhotos} max={3} label="Photos" />
         </Card>
 
-        <Card style={{ backgroundColor: theme.accentSoft, borderColor: theme.accentSoft, padding: space.md }}>
-          <T size={12.5} color={theme.inkSoft} style={{ lineHeight: 18 }}>
-            If you were asked to pay something other than the listed price, say so here — and file a report, so it
-            counts.
-          </T>
-        </Card>
-
-        <Btn title="Post review" onPress={submit} disabled={text.trim().length < 3} />
+        <Btn title="Post" onPress={submit} disabled={text.trim().length < 3} />
       </ScrollView>
     </KeyboardAvoidingView>
   );

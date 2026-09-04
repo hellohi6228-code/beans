@@ -61,7 +61,7 @@ export default function Profile() {
             </View>
           </Row>
 
-          {me.bio ? <Sub>{me.bio}</Sub> : <Sub>No bio yet. Tap Edit to write anything you like.</Sub>}
+          {me.bio ? <Sub>{me.bio}</Sub> : <Sub>No bio yet.</Sub>}
 
           <Row style={{ gap: space.sm }}>
             <Btn title="New post" kind="soft" onPress={() => router.push('/new-post')} style={{ flex: 1 }} />
@@ -69,7 +69,7 @@ export default function Profile() {
               <Btn title="New listing" onPress={() => router.push('/new-listing')} style={{ flex: 1 }} />
             ) : (
               <Btn
-                title="View as others see it"
+                title="View as others"
                 kind="ghost"
                 onPress={() => router.push(`/business/${me.id}`)}
                 style={{ flex: 1 }}
@@ -101,12 +101,10 @@ export default function Profile() {
             <Row style={{ justifyContent: 'space-between' }}>
               <View style={{ flex: 1 }}>
                 <T size={15} weight="700" color={reports.length ? theme.warn : theme.ink}>
-                  Price discrepancy reports
+                  Price reports
                 </T>
                 <T size={12.5} color={theme.muted}>
-                  {reports.length
-                    ? `${reports.length} open — the listed price is the price you charge.`
-                    : 'None. Keep it that way.'}
+                  {reports.length ? `${reports.length} open` : 'None'}
                 </T>
               </View>
               <T size={18} color={theme.muted}>
@@ -121,7 +119,7 @@ export default function Profile() {
             <Label>{listings.length} active listings</Label>
             {listings.length === 0 ? (
               <Card>
-                <Sub>Nothing listed right now.</Sub>
+                <Sub>Nothing listed.</Sub>
               </Card>
             ) : null}
           </>
@@ -133,11 +131,6 @@ export default function Profile() {
             <Empty
               glyph="📷"
               title="Nothing posted yet"
-              body={
-                isSupplier
-                  ? 'Show your merchandise, your events, the day-to-day of your business.'
-                  : 'Post your roasts, your setup, whatever you like.'
-              }
             />
           </Card>
         ) : (

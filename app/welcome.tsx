@@ -33,17 +33,9 @@ export default function Welcome() {
         <T size={40} weight="800" style={{ letterSpacing: -1.2 }}>
           Beans
         </T>
-        <Sub>Coffee sourcing, farm to counter.</Sub>
       </View>
 
       <Card style={{ gap: space.md }}>
-        <T size={17} weight="700">
-          Create an account
-        </T>
-        <Sub>
-          Buyers tell us how much coffee they need. Suppliers list what they have, at the price they will actually
-          charge.
-        </Sub>
         <Row style={{ gap: space.sm }}>
           <Btn
             title="I'm buying"
@@ -61,7 +53,7 @@ export default function Welcome() {
 
       <View style={{ gap: space.sm }}>
         <T size={13} color={theme.muted} style={{ textAlign: 'center' }}>
-          or sign in as one of the sample accounts
+          or try a sample account
         </T>
 
         {demos.map((u) => (
