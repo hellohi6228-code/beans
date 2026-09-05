@@ -1,11 +1,22 @@
 import { Redirect } from 'expo-router';
 import React from 'react';
 import { ActivityIndicator, View } from 'react-native';
-import { theme } from '../src/theme';
+import { T } from '../src/components/ui';
 import { useStore } from '../src/store';
+import { space, theme } from '../src/theme';
 
 export default function Index() {
-  const { hydrated, me } = useStore();
+  const { hydrated, authError } = useStore();
+
+  if (authError) {
+    return (
+      <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', padding: space.xl }}>
+        <T size={13} weight="400" style={{ lineHeight: 20, textAlign: 'center' }}>
+          {authError}
+        </T>
+      </View>
+    );
+  }
 
   if (!hydrated) {
     return (

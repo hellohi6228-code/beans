@@ -4,6 +4,7 @@ import { KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, View
 import { Header } from '../src/components/Header';
 import { PhotoPicker } from '../src/components/PhotoPicker';
 import { Btn, Field, Label, T } from '../src/components/ui';
+import { uploadPhoto } from '../src/lib/supabase';
 import { useStore } from '../src/store';
 import { space, theme, track } from '../src/theme';
 import { SUPPLIER_LABEL, SupplierType } from '../src/types';
@@ -27,6 +28,7 @@ export default function EditProfile() {
   const [avatar, setAvatar] = useState<string[]>(me?.avatar ? [me.avatar] : []);
   const [choice, setChoice] = useState<Choice>(me?.role === 'supplier' ? (me.supplierType ?? 'farmer') : 'none');
   const [open, setOpen] = useState(false);
+  const [busy, setBusy] = useState(false);
 
   // The screen stays mounted, so re-read the account every time it is opened.
   useFocusEffect(
@@ -41,15 +43,22 @@ export default function EditProfile() {
 
   if (!me) return null;
 
-  const save = () => {
-    updateMe({
-      name: name.trim(),
-      bio,
-      avatar: avatar[0],
-      role: choice === 'none' ? 'customer' : 'supplier',
-      supplierType: choice === 'none' ? undefined : choice,
-    });
-    router.back();
+  const save = async () => {
+    if (!me) return;
+    setBusy(true);
+    try {
+      const avatarUrl = avatar[0] ? await uploadPhoto(avatar[0], me.id) : undefined;
+      await updateMe({
+        name: name.trim(),
+        bio,
+        avatar: avatarUrl,
+        role: choice === 'none' ? 'customer' : 'supplier',
+        supplierType: choice === 'none' ? undefined : choice,
+      });
+      router.back();
+    } finally {
+      setBusy(false);
+    }
   };
 
   const current = OPTIONS.find((o) => o.value === choice)!;
@@ -119,7 +128,7 @@ export default function EditProfile() {
         </View>
 
         <View style={{ gap: space.md }}>
-          <Btn title="Save" onPress={save} />
+          <Btn title="Save" onPress={save} busy={busy} />
           <Btn title="Cancel" kind="text" onPress={() => router.back()} />
         </View>
       </ScrollView>

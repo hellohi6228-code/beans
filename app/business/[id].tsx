@@ -48,7 +48,14 @@ export default function BusinessProfile() {
           {user.bio ? <Sub>{user.bio}</Sub> : null}
 
           {!mine && me ? (
-            <Btn title="Message" kind="outline" onPress={() => router.push(`/chat/${openThread(user.id)}`)} />
+            <Btn
+              title="Message"
+              kind="outline"
+              onPress={async () => {
+                const threadId = await openThread(user.id);
+                router.push(`/chat/${threadId}`);
+              }}
+            />
           ) : null}
         </View>
 

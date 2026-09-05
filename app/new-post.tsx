@@ -4,13 +4,14 @@ import { KeyboardAvoidingView, Platform, ScrollView, View } from 'react-native';
 import { Header } from '../src/components/Header';
 import { PhotoPicker } from '../src/components/PhotoPicker';
 import { Btn, Checkbox, Field, Label, Row, Rule, Segmented, T } from '../src/components/ui';
+import { uploadPhotos } from '../src/lib/supabase';
 import { useStore } from '../src/store';
 import { space, theme, track } from '../src/theme';
 import { KG_PER_LB, Unit, money, priceParts, toKg, weightParts } from '../src/units';
 
 export default function NewPost() {
   const router = useRouter();
-  const { addPost } = useStore();
+  const { addPost, me } = useStore();
 
   const [photos, setPhotos] = useState<string[]>([]);
   const [caption, setCaption] = useState('');
@@ -20,21 +21,29 @@ export default function NewPost() {
   const [price, setPrice] = useState('');
   const [amount, setAmount] = useState('');
   const [shippingIncluded, setShippingIncluded] = useState(false);
+  const [busy, setBusy] = useState(false);
 
   const priceNum = parseFloat(price.replace(',', '.'));
   const amountNum = parseFloat(amount.replace(',', '.'));
   const pricePerKg = isFinite(priceNum) && priceNum > 0 ? (unit === 'kg' ? priceNum : priceNum / KG_PER_LB) : 0;
   const lotKg = isFinite(amountNum) && amountNum > 0 ? toKg(amountNum, unit) : 0;
 
-  const ready = photos.length >= 1 && (!selling || (pricePerKg > 0 && lotKg > 0));
+  const ready = photos.length >= 1 && (!selling || (pricePerKg > 0 && lotKg > 0)) && !!me;
 
-  const submit = () => {
-    addPost({
-      photos,
-      caption: caption.trim(),
-      listing: selling ? { pricePerKg, lotKg, enteredUnit: unit, shippingIncluded, active: true } : undefined,
-    });
-    router.back();
+  const submit = async () => {
+    if (!me) return;
+    setBusy(true);
+    try {
+      const uploaded = await uploadPhotos(photos, me.id);
+      await addPost({
+        photos: uploaded,
+        caption: caption.trim(),
+        listing: selling ? { pricePerKg, lotKg, enteredUnit: unit, shippingIncluded, active: true } : undefined,
+      });
+      router.back();
+    } finally {
+      setBusy(false);
+    }
   };
 
   return (
@@ -114,7 +123,7 @@ export default function NewPost() {
         </View>
 
         <View style={{ gap: space.md }}>
-          <Btn title="Post" onPress={submit} disabled={!ready} />
+          <Btn title="Post" onPress={submit} disabled={!ready} busy={busy} />
           <Btn title="Cancel" kind="text" onPress={() => router.back()} />
         </View>
       </ScrollView>

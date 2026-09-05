@@ -122,7 +122,14 @@ export default function PostDetail() {
           </View>
 
           {canMessage ? (
-            <Btn title="Message" onPress={() => router.replace(`/chat/${messageAbout(post)}`)} style={{ marginTop: space.lg }} />
+            <Btn
+              title="Message"
+              onPress={async () => {
+                const threadId = await messageAbout(post);
+                router.replace(`/chat/${threadId}`);
+              }}
+              style={{ marginTop: space.lg }}
+            />
           ) : null}
 
           {listing && me && !mine ? (
@@ -139,8 +146,8 @@ export default function PostDetail() {
             <Btn
               title="Delete post"
               kind="text"
-              onPress={() => {
-                removePost(post.id);
+              onPress={async () => {
+                await removePost(post.id);
                 router.back();
               }}
               style={{ marginTop: space.lg }}
@@ -163,8 +170,8 @@ export default function PostDetail() {
               <Btn title="No" kind="outline" onPress={() => setAsking(false)} style={{ flex: 1 }} />
               <Btn
                 title="Yes"
-                onPress={() => {
-                  addReport(post.id, post.userId);
+                onPress={async () => {
+                  await addReport(post.id, post.userId);
                   setAsking(false);
                 }}
                 style={{ flex: 1 }}
