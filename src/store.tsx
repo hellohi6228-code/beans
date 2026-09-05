@@ -172,11 +172,15 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       setMeId(session?.user.id ?? null);
 
       if (session && (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED' || event === 'INITIAL_SESSION')) {
+        // Keep this identity's tokens fresh in the remembered list, so
+        // switching back to it later still works after its access token
+        // (and, thanks to rotation, its refresh token) has moved on.
         const list = await loadDemoAccounts();
-        const next = upsert(
-          list.map((a) => ({ ...a, id: a.id })),
-          { id: session.user.id, accessToken: session.access_token, refreshToken: session.refresh_token }
-        );
+        const next = upsert(list, {
+          id: session.user.id,
+          accessToken: session.access_token,
+          refreshToken: session.refresh_token,
+        });
         setDemoAccounts(next.map((a) => a.id));
         saveDemoAccounts(next);
       }
