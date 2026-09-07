@@ -1,6 +1,6 @@
 import { useRouter } from 'expo-router';
 import React, { useState } from 'react';
-import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, TextInput, View } from 'react-native';
+import { Image, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, TextInput, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Btn, Checkbox, Field, Label, Rule, Segmented, T } from '../../src/components/ui';
 import { useStore } from '../../src/store';
@@ -44,9 +44,11 @@ export default function Home() {
         keyboardShouldPersistTaps="handled"
       >
         <View style={{ alignItems: 'center', marginBottom: space.xxl }}>
-          <T size={28} weight="300" style={{ letterSpacing: 8 }}>
-            BEANS
-          </T>
+          <Image
+            source={require('../../assets/logo-mark.png')}
+            resizeMode="contain"
+            style={{ width: 220, aspectRatio: 1972 / 1547 }}
+          />
         </View>
 
         <Label>How much coffee</Label>

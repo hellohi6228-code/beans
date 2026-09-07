@@ -11,7 +11,7 @@
     "splash": {
       "image": "./assets/splash-icon.png",
       "resizeMode": "contain",
-      "backgroundColor": "#DCEBF8"
+      "backgroundColor": "#F7F5F4"
     },
     "ios": {
       "supportsTablet": true,
@@ -24,9 +24,8 @@
     "android": {
       "package": "com.beans.sourcing",
       "adaptiveIcon": {
-        "backgroundColor": "#DCEBF8",
+        "backgroundColor": "#F7F5F4",
         "foregroundImage": "./assets/android-icon-foreground.png",
-        "backgroundImage": "./assets/android-icon-background.png",
         "monochromeImage": "./assets/android-icon-monochrome.png"
       },
       "permissions": ["android.permission.CAMERA", "android.permission.READ_MEDIA_IMAGES"],
