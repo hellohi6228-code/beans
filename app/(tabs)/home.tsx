@@ -47,7 +47,7 @@ export default function Home() {
           <Image
             source={require('../../assets/logo-mark.png')}
             resizeMode="contain"
-            style={{ width: 220, aspectRatio: 1972 / 1547 }}
+            style={{ width: 132, height: 132 }}
           />
         </View>
 
