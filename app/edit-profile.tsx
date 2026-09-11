@@ -1,6 +1,6 @@
 import { useFocusEffect, useRouter } from 'expo-router';
 import React, { useCallback, useState } from 'react';
-import { KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { Alert, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { Header } from '../src/components/Header';
 import { PhotoPicker } from '../src/components/PhotoPicker';
 import { Btn, Field, Label, T } from '../src/components/ui';
@@ -56,6 +56,8 @@ export default function EditProfile() {
         supplierType: choice === 'none' ? undefined : choice,
       });
       router.back();
+    } catch (err: any) {
+      Alert.alert('Could not save', err?.message ?? 'Something went wrong. Try again.');
     } finally {
       setBusy(false);
     }

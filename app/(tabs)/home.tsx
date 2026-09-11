@@ -1,6 +1,6 @@
 import { useRouter } from 'expo-router';
 import React, { useState } from 'react';
-import { Image, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, TextInput, View } from 'react-native';
+import { Alert, Image, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, TextInput, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Btn, Checkbox, Field, Label, Rule, Segmented, T } from '../../src/components/ui';
 import { useStore } from '../../src/store';
@@ -13,7 +13,7 @@ const TYPES: SupplierType[] = ['farmer', 'bulk', 'online_retail', 'coffee_shop']
 export default function Home() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const { state, setRequest, me, becomeSupplier } = useStore();
+  const { state, setRequest, me, becomeSupplier, updateMe, startTutorial } = useStore();
 
   const [qty, setQty] = useState(state.request ? String(state.request.qty) : '');
   const [unit, setUnit] = useState<Unit>(state.request?.unit ?? 'kg');
@@ -51,7 +51,7 @@ export default function Home() {
           />
         </View>
 
-        <Label>How much coffee</Label>
+        <Label>How much beans</Label>
 
         <View style={{ flexDirection: 'row', alignItems: 'flex-end', gap: space.lg, marginTop: space.md }}>
           <TextInput
@@ -105,7 +105,23 @@ export default function Home() {
 
         <View style={{ marginTop: space.xxl }}>
           <Rule />
-          {me.role === 'supplier' ? null : picking ? (
+          {me.role === 'supplier' ? (
+            <Btn
+              title="I'm not selling now"
+              kind="text"
+              onPress={() =>
+                Alert.alert('Stop selling?', 'Every listing you have will switch off. You can turn it back on any time.', [
+                  { text: 'Cancel', style: 'cancel' },
+                  {
+                    text: 'Yes',
+                    style: 'destructive',
+                    onPress: () => updateMe({ role: 'customer', supplierType: undefined }),
+                  },
+                ])
+              }
+              style={{ marginTop: space.lg }}
+            />
+          ) : picking ? (
             <View style={{ paddingTop: space.lg, gap: space.md }}>
               <Label>You are a</Label>
               {TYPES.map((t) => (
@@ -113,9 +129,10 @@ export default function Home() {
                   key={t}
                   title={SUPPLIER_LABEL[t]}
                   kind="outline"
-                  onPress={() => {
-                    becomeSupplier(t);
+                  onPress={async () => {
+                    await becomeSupplier(t);
                     setPicking(false);
+                    startTutorial();
                   }}
                 />
               ))}
@@ -123,7 +140,7 @@ export default function Home() {
             </View>
           ) : (
             <Btn
-              title="I am also a supplier"
+              title="I sell coffee beans too"
               kind="text"
               onPress={() => setPicking(true)}
               style={{ marginTop: space.lg }}

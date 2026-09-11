@@ -139,6 +139,12 @@ type Ctx = {
   sendMessage: (threadId: string, text: string) => Promise<void>;
 
   addReport: (postId: string, sellerId: string) => Promise<void>;
+
+  /** Not persisted — just enough state to walk a brand-new supplier through
+   * the menu once, right after they choose what they sell. */
+  tutorial: boolean;
+  startTutorial: () => void;
+  endTutorial: () => void;
 };
 
 const StoreCtx = createContext<Ctx | null>(null);
@@ -149,6 +155,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   const [authError, setAuthError] = useState<string | null>(null);
   const [cache, setCache] = useState<Cache>(emptyCache);
   const [demoAccounts, setDemoAccounts] = useState<string[]>([]);
+  const [tutorial, setTutorial] = useState(false);
 
   // Establish (or restore) a session, then track whoever is signed in from
   // here on — switching a demo identity fires the same listener.
@@ -447,6 +454,10 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       if (error && (error as any).code !== '23505') throw error;
       if (data) setCache((c) => ({ ...c, reports: upsert(c.reports, reportFromRow(data)) }));
     },
+
+    tutorial,
+    startTutorial: () => setTutorial(true),
+    endTutorial: () => setTutorial(false),
   };
 
   return <StoreCtx.Provider value={value}>{children}</StoreCtx.Provider>;

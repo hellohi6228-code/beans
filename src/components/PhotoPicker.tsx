@@ -35,9 +35,11 @@ export function PhotoPicker({
 
   const upload = async () => {
     setAsking(false);
-    const { granted } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (!granted) {
-      Alert.alert('Photo access needed', 'Allow photo access to upload a picture.');
+    // "granted" alone misses iOS's "Select Photos" limited access — the
+    // picker works fine with that, so only block on a true denial.
+    const { granted, accessPrivileges } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (!granted && accessPrivileges !== 'limited') {
+      Alert.alert('Photo access needed', 'Allow photo access in your phone Settings to upload a picture.');
       return;
     }
     const remaining = max - photos.length;

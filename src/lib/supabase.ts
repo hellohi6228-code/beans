@@ -38,6 +38,25 @@ export async function ensureSession(): Promise<Session> {
 
 const rid = () => `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 10)}`;
 
+/** A promise that never settles is indistinguishable from a stuck spinner —
+ * cap every step of an upload so a bad photo or a dead connection fails
+ * loudly within 20s instead of spinning forever. */
+function withTimeout<T>(promise: Promise<T>, ms: number, label: string): Promise<T> {
+  return new Promise((resolve, reject) => {
+    const t = setTimeout(() => reject(new Error(`${label} timed out`)), ms);
+    promise.then(
+      (v) => {
+        clearTimeout(t);
+        resolve(v);
+      },
+      (e) => {
+        clearTimeout(t);
+        reject(e);
+      }
+    );
+  });
+}
+
 function guessExt(uri: string): string {
   const dataMatch = /^data:image\/(\w+);/.exec(uri);
   if (dataMatch) return dataMatch[1] === 'jpeg' ? 'jpg' : dataMatch[1];
@@ -64,12 +83,15 @@ export async function uploadPhoto(uri: string, userId: string): Promise<string> 
   const ext = guessExt(uri);
   const path = `${userId}/${rid()}.${ext}`;
 
-  const bytes =
-    Platform.OS === 'web' ? await fetch(uri).then((r) => r.arrayBuffer()) : await new File(uri).arrayBuffer();
+  const readBytes =
+    Platform.OS === 'web' ? fetch(uri).then((r) => r.arrayBuffer()) : new File(uri).arrayBuffer();
+  const bytes = await withTimeout(readBytes, 20000, 'Reading the photo');
 
-  const { error } = await supabase.storage
-    .from('photos')
-    .upload(path, bytes, { contentType: contentTypeFor(ext), upsert: true });
+  const { error } = await withTimeout(
+    supabase.storage.from('photos').upload(path, bytes, { contentType: contentTypeFor(ext), upsert: true }),
+    20000,
+    'Uploading the photo'
+  );
   if (error) throw error;
 
   return supabase.storage.from('photos').getPublicUrl(path).data.publicUrl;

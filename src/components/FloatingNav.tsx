@@ -1,30 +1,41 @@
 import { usePathname, useRouter } from 'expo-router';
-import React, { useRef, useState } from 'react';
-import { Animated, Dimensions, PanResponder, Pressable, StyleSheet, View } from 'react-native';
+import React, { useEffect, useRef, useState } from 'react';
+import { Animated, Dimensions, Image, PanResponder, Pressable, StyleSheet, View } from 'react-native';
 import { useStore } from '../store';
 import { space, theme, track } from '../theme';
 import { T } from './ui';
 
 const SIZE = 52;
 const { width: W, height: H } = Dimensions.get('window');
+const START_X = W - SIZE - 18;
+const START_Y = H - SIZE - 90;
 
-/** Drag it anywhere, tap it for the menu. Lives above every screen. */
+type Item = { label: string; href: string; coach?: boolean };
+
+/**
+ * Drag it anywhere, tap it for the menu. Lives above every screen. Right
+ * after picking a supplier type, it force-opens once and points at Post and
+ * Listing — see the `tutorial` flag in the store.
+ */
 export function FloatingNav() {
   const router = useRouter();
   const path = usePathname();
-  const { me } = useStore();
+  const { me, tutorial, endTutorial } = useStore();
   const [open, setOpen] = useState(false);
+  // Flips to true once the button has been dragged into the top half of the
+  // screen, so the menu opens downward instead of running off the top edge.
+  const [expandDown, setExpandDown] = useState(START_Y < H / 2);
 
   // Listing only exists for accounts that are currently supplying.
-  const items = [
+  const items: Item[] = [
     { label: 'Find', href: '/home' },
-    { label: 'Post', href: '/new-post' },
-    ...(me?.role === 'supplier' ? [{ label: 'Listing', href: '/listings' }] : []),
+    { label: 'Post', href: '/new-post', coach: true },
+    ...(me?.role === 'supplier' ? [{ label: 'Listing', href: '/listings', coach: true }] : []),
     { label: 'Messages', href: '/messages' },
     { label: 'Profile', href: '/profile' },
   ];
 
-  const pos = useRef(new Animated.ValueXY({ x: W - SIZE - 18, y: H - SIZE - 90 })).current;
+  const pos = useRef(new Animated.ValueXY({ x: START_X, y: START_Y })).current;
   const dragged = useRef(false);
 
   const pan = useRef(
@@ -40,30 +51,39 @@ export function FloatingNav() {
         pos.flattenOffset();
         const x = (pos.x as any)._value;
         const y = (pos.y as any)._value;
+        const clampedY = Math.min(Math.max(y, 60), H - SIZE - 30);
         Animated.spring(pos, {
           toValue: {
             x: Math.min(Math.max(x, 12), W - SIZE - 12),
-            y: Math.min(Math.max(y, 60), H - SIZE - 30),
+            y: clampedY,
           },
           useNativeDriver: false,
           friction: 8,
         }).start();
+        setExpandDown(clampedY < H / 2);
       },
     })
   ).current;
 
-  const go = (href: string) => {
+  // Having just picked a supplier type, force the menu open once to show it off.
+  useEffect(() => {
+    if (tutorial) setOpen(true);
+  }, [tutorial]);
+
+  const closeMenu = () => {
     setOpen(false);
+    if (tutorial) endTutorial();
+  };
+
+  const go = (href: string) => {
+    closeMenu();
     router.navigate(href as never);
   };
 
   return (
     <>
       {open ? (
-        <Pressable
-          onPress={() => setOpen(false)}
-          style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}
-        />
+        <Pressable onPress={closeMenu} style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }} />
       ) : null}
 
       <Animated.View
@@ -76,18 +96,21 @@ export function FloatingNav() {
       >
         {open ? (
           <View
-            style={{
-              position: 'absolute',
-              bottom: SIZE + 8,
-              right: 0,
-              backgroundColor: theme.surface,
-              borderWidth: StyleSheet.hairlineWidth,
-              borderColor: theme.ink,
-              minWidth: 150,
-            }}
+            style={[
+              {
+                position: 'absolute',
+                right: 0,
+                backgroundColor: theme.surface,
+                borderWidth: StyleSheet.hairlineWidth,
+                borderColor: theme.ink,
+                minWidth: 220,
+              },
+              expandDown ? { top: SIZE + 8 } : { bottom: SIZE + 8 },
+            ]}
           >
             {items.map((it, i) => {
               const on = path === it.href;
+              const coach = tutorial && it.coach;
               return (
                 <Pressable
                   key={it.href}
@@ -97,11 +120,12 @@ export function FloatingNav() {
                     paddingHorizontal: space.lg,
                     borderTopWidth: i === 0 ? 0 : StyleSheet.hairlineWidth,
                     borderTopColor: theme.lineSoft,
+                    backgroundColor: coach ? theme.lineSoft : 'transparent',
                   }}
                 >
                   <T
                     size={11}
-                    weight={on ? '600' : '400'}
+                    weight={on || coach ? '600' : '400'}
                     color={on ? theme.ink : theme.inkSoft}
                     style={{ letterSpacing: track.button, textTransform: 'uppercase' }}
                   >
@@ -110,6 +134,31 @@ export function FloatingNav() {
                 </Pressable>
               );
             })}
+
+            {tutorial ? (
+              <View
+                style={{
+                  padding: space.lg,
+                  borderTopWidth: StyleSheet.hairlineWidth,
+                  borderTopColor: theme.lineSoft,
+                  gap: space.md,
+                }}
+              >
+                <T size={12} weight="400" color={theme.inkSoft} style={{ lineHeight: 18 }}>
+                  This is where you post and manage your selling beans.
+                </T>
+                <Pressable onPress={closeMenu} hitSlop={8}>
+                  <T
+                    size={11}
+                    weight="600"
+                    color={theme.ink}
+                    style={{ letterSpacing: track.button, textDecorationLine: 'underline' }}
+                  >
+                    GOT IT
+                  </T>
+                </Pressable>
+              </View>
+            ) : null}
           </View>
         ) : null}
 
@@ -119,7 +168,9 @@ export function FloatingNav() {
             dragged.current = false;
           }}
           onPress={() => {
-            if (!dragged.current) setOpen((v) => !v);
+            if (dragged.current) return;
+            if (open) closeMenu();
+            else setOpen(true);
           }}
           style={{
             width: SIZE,
@@ -130,9 +181,17 @@ export function FloatingNav() {
             justifyContent: 'center',
           }}
         >
-          <T size={13} weight="500" color="#fff" style={{ letterSpacing: 1 }}>
-            {open ? '×' : '≡'}
-          </T>
+          {open ? (
+            <T size={13} weight="500" color="#fff" style={{ letterSpacing: 1 }}>
+              ×
+            </T>
+          ) : (
+            <Image
+              source={require('../../assets/logo-mark.png')}
+              resizeMode="contain"
+              style={{ width: 28, height: 28, tintColor: '#fff' }}
+            />
+          )}
         </Pressable>
       </Animated.View>
     </>

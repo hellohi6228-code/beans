@@ -1,6 +1,6 @@
 import { useRouter } from 'expo-router';
 import React, { useState } from 'react';
-import { KeyboardAvoidingView, Platform, ScrollView, View } from 'react-native';
+import { Alert, KeyboardAvoidingView, Platform, ScrollView, View } from 'react-native';
 import { Header } from '../src/components/Header';
 import { PhotoPicker } from '../src/components/PhotoPicker';
 import { Btn, Checkbox, Field, Label, Row, Rule, Segmented, T } from '../src/components/ui';
@@ -41,6 +41,8 @@ export default function NewPost() {
         listing: selling ? { pricePerKg, lotKg, enteredUnit: unit, shippingIncluded, active: true } : undefined,
       });
       router.back();
+    } catch (err: any) {
+      Alert.alert('Could not post', err?.message ?? 'Something went wrong. Try again.');
     } finally {
       setBusy(false);
     }
