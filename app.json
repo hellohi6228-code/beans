@@ -7,12 +7,6 @@
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
-    "newArchEnabled": true,
-    "splash": {
-      "image": "./assets/splash-icon.png",
-      "resizeMode": "contain",
-      "backgroundColor": "#F7F5F4"
-    },
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.beans.sourcing",
@@ -42,6 +36,14 @@
         {
           "photosPermission": "Beans needs access to your photos so you can upload pictures of your beans and your business.",
           "cameraPermission": "Beans uses your camera so you can photograph your coffee beans, your shop and your events."
+        }
+      ],
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/splash-icon.png",
+          "resizeMode": "contain",
+          "backgroundColor": "#F7F5F4"
         }
       ]
     ]
