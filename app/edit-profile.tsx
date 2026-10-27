@@ -7,16 +7,13 @@ import { Btn, Field, Label, T } from '../src/components/ui';
 import { uploadPhoto } from '../src/lib/supabase';
 import { useStore } from '../src/store';
 import { space, theme, track } from '../src/theme';
-import { SUPPLIER_LABEL, SupplierType } from '../src/types';
+import { SUPPLIER_LABEL, SUPPLIER_TYPES, SupplierType } from '../src/types';
 
 type Choice = SupplierType | 'none';
 
 const OPTIONS: { value: Choice; label: string }[] = [
   { value: 'none', label: 'Not selling' },
-  { value: 'farmer', label: SUPPLIER_LABEL.farmer },
-  { value: 'bulk', label: SUPPLIER_LABEL.bulk },
-  { value: 'online_retail', label: SUPPLIER_LABEL.online_retail },
-  { value: 'coffee_shop', label: SUPPLIER_LABEL.coffee_shop },
+  ...SUPPLIER_TYPES.map((t) => ({ value: t, label: SUPPLIER_LABEL[t] })),
 ];
 
 export default function EditProfile() {

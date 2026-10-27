@@ -6,7 +6,7 @@ import { Header } from '../../src/components/Header';
 import { Empty, Photo, Rule, T } from '../../src/components/ui';
 import { useStore } from '../../src/store';
 import { space, theme, track } from '../../src/theme';
-import { priceParts, weightParts } from '../../src/units';
+import { availableLine, categoryLabel, priceLines } from '../../src/listing';
 
 /** Every item this account is selling, one row each, with its on/off switch. */
 export default function Listings() {
@@ -53,10 +53,10 @@ export default function Listings() {
                           {p.caption || 'Post'}
                         </T>
                         <T size={11} weight="400">
-                          {priceParts(l.pricePerKg).perKg} · {priceParts(l.pricePerKg).perLb}
+                          {priceLines(l).main} · {priceLines(l).sub}
                         </T>
                         <T size={9.5} color={theme.muted} style={{ letterSpacing: track.label }}>
-                          {weightParts(l.lotKg).kg} / {weightParts(l.lotKg).lb}
+                          {categoryLabel(l)} · {availableLine(l)}
                         </T>
                       </View>
                     </Pressable>

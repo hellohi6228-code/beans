@@ -6,8 +6,17 @@ import { Header } from '../../src/components/Header';
 import { Avatar, Btn, Label, Photo, Row, Rule, Sub, T } from '../../src/components/ui';
 import { useStore } from '../../src/store';
 import { space, theme, track } from '../../src/theme';
+import {
+  allergenLine,
+  availableLine,
+  categoryLabel,
+  minLine,
+  packLine,
+  priceLines,
+  shipsLine,
+  trustLine,
+} from '../../src/listing';
 import { SUPPLIER_LABEL } from '../../src/types';
-import { priceParts, weightParts } from '../../src/units';
 
 const W = Dimensions.get('window').width;
 
@@ -51,21 +60,37 @@ export default function PostDetail() {
 
           {listing ? (
             <View style={{ marginTop: space.lg }}>
-              <Row style={{ gap: space.sm, alignItems: 'baseline' }}>
+              <Label>{categoryLabel(listing)}</Label>
+
+              <Row style={{ gap: space.sm, alignItems: 'baseline', marginTop: space.sm }}>
                 <T size={19} weight="400">
-                  {priceParts(listing.pricePerKg).perKg}
+                  {priceLines(listing).main}
                 </T>
                 <T size={13} weight="300" color={theme.inkSoft}>
-                  {priceParts(listing.pricePerKg).perLb}
+                  {priceLines(listing).sub}
                 </T>
               </Row>
 
-              <T size={11} color={theme.muted} style={{ letterSpacing: track.label, marginTop: 6 }}>
-                {weightParts(listing.lotKg).kg} / {weightParts(listing.lotKg).lb}
-              </T>
+              <View style={{ marginTop: space.md, gap: 4 }}>
+                {[
+                  packLine(listing),
+                  availableLine(listing),
+                  minLine(listing),
+                  shipsLine(listing),
+                  trustLine(listing),
+                  allergenLine(listing),
+                  listing.shippingIncluded ? 'Shipping included' : 'Shipping not included',
+                ]
+                  .filter(Boolean)
+                  .map((line) => (
+                    <T key={line} size={11} color={theme.inkSoft} style={{ letterSpacing: 0.4 }}>
+                      {line}
+                    </T>
+                  ))}
+              </View>
 
-              <T size={11} color={theme.muted} style={{ letterSpacing: track.label, marginTop: 4 }}>
-                {listing.shippingIncluded ? 'SHIPPING INCLUDED' : 'SHIPPING NOT INCLUDED'}
+              <T size={10} color={theme.muted} style={{ marginTop: space.md }}>
+                Price includes duties, fees and tax.
               </T>
 
               {mine ? (

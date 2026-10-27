@@ -39,3 +39,14 @@ export const weightParts = (kg: number) => ({
 });
 
 export const lotTotal = (pricePerKg: number, lotKg: number) => pricePerKg * lotKg;
+
+// Pack sizes (a bag of snacks, a jar of sauce) read better in g and oz.
+export const KG_PER_OZ = 0.028349523125;
+export const gToKg = (g: number) => g / 1000;
+export const ozToKg = (oz: number) => oz * KG_PER_OZ;
+
+/** "200 g / 7.05 oz" as two strings */
+export const smallWeightParts = (kg: number) => ({
+  g: `${num(kg * 1000, 1)} g`,
+  oz: `${num(kg / KG_PER_OZ)} oz`,
+});

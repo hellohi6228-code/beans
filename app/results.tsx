@@ -1,51 +1,84 @@
 import { useRouter } from 'expo-router';
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import { Dimensions, Pressable, ScrollView, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Header } from '../src/components/Header';
-import { Empty, Photo, T } from '../src/components/ui';
-import { useStore } from '../src/store';
+import { Chip, Empty, Photo, Row, T } from '../src/components/ui';
+import { caseKg, priceLines, shipsLine } from '../src/listing';
+import { SourcingRequest, useStore } from '../src/store';
 import { space, theme, track } from '../src/theme';
-import { priceParts, weightParts } from '../src/units';
+import { CATEGORY_LABEL, Post } from '../src/types';
+import { weightParts } from '../src/units';
 
 const W = Dimensions.get('window').width;
 const COL = (W - space.lg * 2 - 2) / 2;
+
+/** Whether a listing can fill the amount asked for — enough stock, and not under its minimum. */
+function fits(p: Post, req: SourcingRequest) {
+  const l = p.listing!;
+  if (!req.qty) return true;
+  if (req.unit === 'case') {
+    return l.sellBy === 'case' && (l.casesAvailable ?? 0) >= req.qty && l.minOrder <= req.qty;
+  }
+  const minKg = l.sellBy === 'case' ? l.minOrder * caseKg(l) : l.minOrder;
+  return l.lotKg >= req.qtyKg && minKg <= req.qtyKg;
+}
 
 export default function Results() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { state, userById, me } = useStore();
   const req = state.request;
+  // Tariffs and the end of de minimis made "already here" the question
+  // buyers ask first, so it gets its own switch.
+  const [usOnly, setUsOnly] = useState(false);
 
   const matches = useMemo(() => {
-    const qtyKg = req?.qtyKg ?? 0;
-    let pool = state.posts.filter((p) => p.listing?.active && p.userId !== me?.id);
-    if (req?.shippingIncluded) pool = pool.filter((p) => p.listing!.shippingIncluded);
-    return pool
-      .filter((p) => p.listing!.lotKg >= qtyKg)
+    if (!req) return [];
+    const words = req.text.toLowerCase().split(/\s+/).filter(Boolean);
+    return state.posts
+      .filter((p) => p.listing?.active && p.userId !== me?.id)
+      .filter((p) => req.category === 'all' || p.listing!.category === req.category)
+      .filter((p) => !req.shippingIncluded || p.listing!.shippingIncluded)
+      .filter((p) => !usOnly || p.listing!.shipsFrom === 'us')
+      .filter((p) => {
+        if (!words.length) return true;
+        const hay = `${p.caption} ${CATEGORY_LABEL[p.listing!.category]}`.toLowerCase();
+        return words.every((w) => hay.includes(w));
+      })
+      .filter((p) => fits(p, req))
       .sort((a, b) => a.listing!.pricePerKg - b.listing!.pricePerKg);
-  }, [state.posts, req, me]);
+  }, [state.posts, req, me, usOnly]);
 
   if (!req) {
     return (
       <>
         <Header back title="Results" />
-        <Empty title="No amount set" />
+        <Empty title="Nothing searched" />
       </>
     );
   }
 
-  const w = weightParts(req.qtyKg);
+  const what = [req.text, req.category === 'all' ? null : CATEGORY_LABEL[req.category]].filter(Boolean).join(' · ');
+  const amount = !req.qty
+    ? null
+    : req.unit === 'case'
+      ? `${req.qty} ${req.qty === 1 ? 'case' : 'cases'}`
+      : `${weightParts(req.qtyKg).kg} / ${weightParts(req.qtyKg).lb}`;
 
   return (
     <>
       <Header
         back
-        title={`${w.kg} / ${w.lb}`}
-        subtitle={req.shippingIncluded ? 'Shipping included' : 'Shipping separate'}
+        title={what || 'Everything'}
+        subtitle={[amount, req.shippingIncluded ? 'Shipping included' : null].filter(Boolean).join(' · ') || undefined}
       />
 
       <ScrollView contentContainerStyle={{ paddingHorizontal: space.lg, paddingBottom: insets.bottom + 120 }}>
+        <Row style={{ marginBottom: space.md }}>
+          <Chip label="US stock only" selected={usOnly} onPress={() => setUsOnly((v) => !v)} />
+        </Row>
+
         {matches.length === 0 ? (
           <Empty title="Nothing yet" />
         ) : (
@@ -53,24 +86,25 @@ export default function Results() {
             {matches.map((p) => {
               const l = p.listing!;
               const seller = userById(p.userId);
+              const price = priceLines(l);
               return (
                 <Pressable key={p.id} onPress={() => router.push(`/post/${p.id}`)} style={{ width: COL }}>
                   <Photo uri={p.photos[0]} style={{ width: COL, height: COL * 1.35 }} />
                   <View style={{ paddingVertical: space.md, gap: 3 }}>
                     <T size={12} weight="300" numberOfLines={1}>
-                      {p.caption || 'Post'}
+                      {p.caption || CATEGORY_LABEL[l.category]}
                     </T>
                     <T size={9.5} color={theme.muted} style={{ letterSpacing: track.label, textTransform: 'uppercase' }}>
                       {seller?.name || 'Beans user'}
                     </T>
                     <T size={12} weight="400" style={{ marginTop: 2 }}>
-                      {priceParts(l.pricePerKg).perKg}
+                      {price.main}
                     </T>
                     <T size={10} color={theme.inkSoft}>
-                      {priceParts(l.pricePerKg).perLb}
+                      {price.sub}
                     </T>
-                    <T size={9.5} color={theme.muted} style={{ letterSpacing: track.label }}>
-                      {weightParts(l.lotKg).kg} / {weightParts(l.lotKg).lb}
+                    <T size={9.5} color={theme.muted} style={{ letterSpacing: track.label, textTransform: 'uppercase' }}>
+                      {shipsLine(l)}
                     </T>
                   </View>
                 </Pressable>

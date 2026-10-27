@@ -2,12 +2,17 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import type { RealtimeChannel } from '@supabase/supabase-js';
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { ensureSession, supabase } from './lib/supabase';
-import { Message, Post, Report, SupplierType, Thread, User } from './types';
+import { Category, Message, Post, Report, SupplierType, Thread, User } from './types';
 import { Unit } from './units';
 
+/** What the front page asks. Everything but shipping is optional. */
 export type SourcingRequest = {
+  text: string;
+  category: Category | 'all';
+  /** 0 means any amount. */
   qty: number;
-  unit: Unit;
+  unit: Unit | 'case';
+  /** The amount in kg when asked by weight; 0 when asked in cases. */
   qtyKg: number;
   shippingIncluded: boolean;
   address: string;
@@ -67,12 +72,27 @@ const postFromRow = (r: any): Post => ({
   userId: r.user_id,
   photos: r.photos ?? [],
   caption: r.caption ?? '',
+  // listing_active is null on a plain post and true/false on a listing.
+  // Older listings predate the food fields, so each falls back to how every
+  // listing used to be: coffee, by weight, from US stock.
   listing:
-    r.price_per_kg != null
+    r.listing_active != null
       ? {
+          category: r.category ?? 'coffee',
+          sellBy: r.sell_by ?? 'weight',
           pricePerKg: Number(r.price_per_kg),
           lotKg: Number(r.lot_kg),
           enteredUnit: r.entered_unit,
+          pricePerCase: r.price_per_case != null ? Number(r.price_per_case) : undefined,
+          unitsPerCase: r.units_per_case ?? undefined,
+          unitKg: r.unit_kg != null ? Number(r.unit_kg) : undefined,
+          casesAvailable: r.cases_available ?? undefined,
+          minOrder: Number(r.min_order ?? 0),
+          shipsFrom: r.ships_from ?? 'us',
+          leadDays: r.lead_days ?? undefined,
+          fdaRegistered: !!r.fda_registered,
+          englishLabel: !!r.english_label,
+          allergens: r.allergens ?? [],
           shippingIncluded: !!r.shipping_included,
           active: !!r.listing_active,
         }
@@ -378,15 +398,32 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     reportedByMe: (postId) => cache.reports.some((r) => r.postId === postId && r.reporterId === meId),
 
     addPost: async (input) => {
+      const l = input.listing;
       const row = {
         user_id: meId,
         photos: input.photos,
         caption: input.caption,
-        price_per_kg: input.listing?.pricePerKg ?? null,
-        lot_kg: input.listing?.lotKg ?? null,
-        entered_unit: input.listing?.enteredUnit ?? null,
-        shipping_included: input.listing?.shippingIncluded ?? null,
-        listing_active: input.listing ? input.listing.active : null,
+        price_per_kg: l?.pricePerKg ?? null,
+        lot_kg: l?.lotKg ?? null,
+        entered_unit: l?.enteredUnit ?? null,
+        shipping_included: l?.shippingIncluded ?? null,
+        listing_active: l ? l.active : null,
+        ...(l
+          ? {
+              category: l.category,
+              sell_by: l.sellBy,
+              price_per_case: l.pricePerCase ?? null,
+              units_per_case: l.unitsPerCase ?? null,
+              unit_kg: l.unitKg ?? null,
+              cases_available: l.casesAvailable ?? null,
+              min_order: l.minOrder,
+              ships_from: l.shipsFrom,
+              lead_days: l.leadDays ?? null,
+              fda_registered: l.fdaRegistered,
+              english_label: l.englishLabel,
+              allergens: l.allergens,
+            }
+          : {}),
       };
       const { data, error } = await supabase.from('posts').insert(row).select().single();
       if (error) throw error;

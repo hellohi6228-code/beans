@@ -145,7 +145,7 @@ export function FloatingNav() {
                 }}
               >
                 <T size={12} weight="400" color={theme.inkSoft} style={{ lineHeight: 18 }}>
-                  This is where you post and manage your selling beans.
+                  This is where you post and manage what you sell.
                 </T>
                 <Pressable onPress={closeMenu} hitSlop={8}>
                   <T

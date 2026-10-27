@@ -2,34 +2,44 @@ import { useRouter } from 'expo-router';
 import React, { useState } from 'react';
 import { Alert, Image, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, TextInput, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Btn, Checkbox, Field, Label, Rule, Segmented, T } from '../../src/components/ui';
+import { Btn, Checkbox, Chip, Field, Label, Rule, Segmented, T } from '../../src/components/ui';
 import { useStore } from '../../src/store';
 import { space, theme, track } from '../../src/theme';
-import { SUPPLIER_LABEL, SupplierType } from '../../src/types';
+import { CATEGORIES, CATEGORY_LABEL, Category, SUPPLIER_LABEL, SUPPLIER_TYPES } from '../../src/types';
 import { Unit, toKg, weightParts } from '../../src/units';
-
-const TYPES: SupplierType[] = ['farmer', 'bulk', 'online_retail', 'coffee_shop'];
 
 export default function Home() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { state, setRequest, me, becomeSupplier, updateMe, startTutorial } = useStore();
 
-  const [qty, setQty] = useState(state.request ? String(state.request.qty) : '');
-  const [unit, setUnit] = useState<Unit>(state.request?.unit ?? 'kg');
+  const [category, setCategory] = useState<Category | 'all'>(state.request?.category ?? 'all');
+  const [text, setText] = useState(state.request?.text ?? '');
+  const [qty, setQty] = useState(state.request?.qty ? String(state.request.qty) : '');
+  const [unit, setUnit] = useState<Unit | 'case'>(state.request?.unit ?? 'kg');
   const [shippingIncluded, setShippingIncluded] = useState(state.request?.shippingIncluded ?? false);
   const [address, setAddress] = useState(state.request?.address ?? '');
   const [picking, setPicking] = useState(false);
 
   if (!me) return null;
 
+  // The amount is optional: blank browses everything.
   const value = parseFloat(qty.replace(',', '.'));
+  const hasQty = qty.trim().length > 0;
   const valid = isFinite(value) && value > 0;
-  const qtyKg = valid ? toKg(value, unit) : 0;
-  const ready = valid && (!shippingIncluded || address.trim().length > 5);
+  const qtyKg = valid && unit !== 'case' ? toKg(value, unit) : 0;
+  const ready = (!hasQty || valid) && (!shippingIncluded || address.trim().length > 5);
 
   const search = () => {
-    setRequest({ qty: value, unit, qtyKg, shippingIncluded, address: address.trim() });
+    setRequest({
+      text: text.trim(),
+      category,
+      qty: valid ? value : 0,
+      unit,
+      qtyKg,
+      shippingIncluded,
+      address: address.trim(),
+    });
     router.push('/results');
   };
 
@@ -43,7 +53,7 @@ export default function Home() {
         }}
         keyboardShouldPersistTaps="handled"
       >
-        <View style={{ alignItems: 'center', marginBottom: space.xxl }}>
+        <View style={{ alignItems: 'center', marginBottom: space.xl }}>
           <Image
             source={require('../../assets/logo-mark.png')}
             resizeMode="contain"
@@ -51,14 +61,37 @@ export default function Home() {
           />
         </View>
 
-        <Label>How much beans</Label>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          style={{ marginHorizontal: -space.lg }}
+          contentContainerStyle={{ gap: 6, paddingHorizontal: space.lg }}
+        >
+          <Chip label="All" selected={category === 'all'} onPress={() => setCategory('all')} />
+          {CATEGORIES.map((c) => (
+            <Chip key={c} label={CATEGORY_LABEL[c]} selected={category === c} onPress={() => setCategory(c)} />
+          ))}
+        </ScrollView>
+
+        <Field
+          value={text}
+          onChangeText={setText}
+          placeholder="Chili crisp, oolong, latiao…"
+          returnKeyType="search"
+          onSubmitEditing={ready ? search : undefined}
+          style={{ marginTop: space.lg }}
+        />
+
+        <View style={{ marginTop: space.xl }}>
+          <Label>How much</Label>
+        </View>
 
         <View style={{ flexDirection: 'row', alignItems: 'flex-end', gap: space.lg, marginTop: space.md }}>
           <TextInput
             value={qty}
             onChangeText={setQty}
             keyboardType="decimal-pad"
-            placeholder="0"
+            placeholder="Any"
             placeholderTextColor={theme.line}
             style={{
               flex: 1,
@@ -71,13 +104,14 @@ export default function Home() {
               color: theme.ink,
             }}
           />
-          <View style={{ width: 110 }}>
+          <View style={{ width: 150 }}>
             <Segmented
               value={unit}
               onChange={setUnit}
               options={[
                 { value: 'kg', label: 'kg' },
                 { value: 'lb', label: 'lb' },
+                { value: 'case', label: 'case' },
               ]}
             />
           </View>
@@ -85,7 +119,9 @@ export default function Home() {
 
         {valid ? (
           <T size={10} color={theme.muted} style={{ letterSpacing: track.label, marginTop: space.md }}>
-            {weightParts(qtyKg).kg} / {weightParts(qtyKg).lb}
+            {unit === 'case'
+              ? `${value} ${value === 1 ? 'CASE' : 'CASES'}`
+              : `${weightParts(qtyKg).kg} / ${weightParts(qtyKg).lb}`}
           </T>
         ) : null}
 
@@ -101,7 +137,7 @@ export default function Home() {
           ) : null}
         </View>
 
-        <Btn title="Find beans" onPress={search} disabled={!ready} style={{ marginTop: space.xl }} />
+        <Btn title="Find" onPress={search} disabled={!ready} style={{ marginTop: space.xl }} />
 
         <View style={{ marginTop: space.xxl }}>
           <Rule />
@@ -124,7 +160,7 @@ export default function Home() {
           ) : picking ? (
             <View style={{ paddingTop: space.lg, gap: space.md }}>
               <Label>You are a</Label>
-              {TYPES.map((t) => (
+              {SUPPLIER_TYPES.map((t) => (
                 <Btn
                   key={t}
                   title={SUPPLIER_LABEL[t]}
@@ -139,12 +175,7 @@ export default function Home() {
               <Btn title="Cancel" kind="text" onPress={() => setPicking(false)} />
             </View>
           ) : (
-            <Btn
-              title="I sell coffee beans too"
-              kind="text"
-              onPress={() => setPicking(true)}
-              style={{ marginTop: space.lg }}
-            />
+            <Btn title="I sell too" kind="text" onPress={() => setPicking(true)} style={{ marginTop: space.lg }} />
           )}
         </View>
       </ScrollView>

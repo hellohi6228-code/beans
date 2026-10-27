@@ -7,7 +7,7 @@ import { Btn, Photo, Row, T } from '../../src/components/ui';
 import { useStore } from '../../src/store';
 import { space, theme, track } from '../../src/theme';
 import { SUPPLIER_LABEL } from '../../src/types';
-import { priceParts, weightParts } from '../../src/units';
+import { availableLine, minLine, packLine, priceLines, shipsLine } from '../../src/listing';
 
 export default function Chat() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -72,13 +72,16 @@ export default function Chat() {
                   {l ? (
                     <>
                       <T size={13} weight="500" style={{ marginTop: 2 }}>
-                        {priceParts(l.pricePerKg).perKg}
+                        {priceLines(l).main}
                       </T>
                       <T size={10.5} color={theme.inkSoft}>
-                        {priceParts(l.pricePerKg).perLb}
+                        {priceLines(l).sub}
                       </T>
                       <T size={9.5} color={theme.muted} style={{ letterSpacing: track.label }}>
-                        {weightParts(l.lotKg).kg} / {weightParts(l.lotKg).lb}
+                        {packLine(l) ?? availableLine(l)}
+                      </T>
+                      <T size={9.5} color={theme.muted} style={{ letterSpacing: track.label }}>
+                        {[minLine(l), shipsLine(l)].filter(Boolean).join(' · ')}
                       </T>
                       <T size={9.5} color={theme.muted} style={{ letterSpacing: track.label }}>
                         {l.shippingIncluded ? 'SHIPPING INCLUDED' : 'SHIPPING NOT INCLUDED'}
