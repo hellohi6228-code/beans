@@ -20,8 +20,9 @@ publishable key). Two things need doing once, by whoever owns that project:
    in [`supabase/migrations/`](supabase/migrations/) in order:
    `0001_init.sql` creates every table, its row-level security policies, the `photos`
    storage bucket, and turns on Realtime; `0002_food_catalogue.sql` adds categories,
-   case packs, minimum orders, ships-from and label facts to listings. Both are safe to
-   re-run. If the `photos` bucket doesn't appear under Storage afterwards, create it by
+   case packs, minimum orders, ships-from and label facts to listings;
+   `0003_case_check_nulls.sql` makes the database refuse a case listing with missing
+   case details. All are safe to re-run. If the `photos` bucket doesn't appear under Storage afterwards, create it by
    hand: New bucket → `photos` → Public.
 2. **Turn on anonymous sign-ins.** Authentication → Sign In / Providers → Anonymous.
    There is no sign-up screen — the first launch on a device signs in anonymously and
