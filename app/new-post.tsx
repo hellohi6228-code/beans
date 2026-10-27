@@ -7,7 +7,7 @@ import { Btn, Checkbox, Chip, Field, Label, Row, Rule, Segmented, T } from '../s
 import { uploadPhotos } from '../src/lib/supabase';
 import { useStore } from '../src/store';
 import { space, theme, track } from '../src/theme';
-import { ALLERGENS, ALLERGEN_LABEL, Allergen, CATEGORIES, CATEGORY_LABEL, Category, ListingPart } from '../src/types';
+import { ALLERGENS, ALLERGEN_LABEL, ALLERGEN_ZH, Allergen, CATEGORIES, CATEGORY_LABEL, Category, ListingPart } from '../src/types';
 import {
   KG_PER_LB,
   Unit,
@@ -308,7 +308,7 @@ export default function NewPost() {
                     {ALLERGENS.map((a) => (
                       <Chip
                         key={a}
-                        label={ALLERGEN_LABEL[a]}
+                        label={`${ALLERGEN_LABEL[a]} ${ALLERGEN_ZH[a]}`}
                         selected={allergens.includes(a)}
                         onPress={() => toggleAllergen(a)}
                       />

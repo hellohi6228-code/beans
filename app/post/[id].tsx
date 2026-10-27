@@ -13,6 +13,7 @@ import {
   minLine,
   packLine,
   priceLines,
+  shippingLine,
   shipsLine,
   trustLine,
 } from '../../src/listing';
@@ -79,7 +80,7 @@ export default function PostDetail() {
                   shipsLine(listing),
                   trustLine(listing),
                   allergenLine(listing),
-                  listing.shippingIncluded ? 'Shipping included' : 'Shipping not included',
+                  shippingLine(listing),
                 ]
                   .filter(Boolean)
                   .map((line) => (
@@ -90,7 +91,7 @@ export default function PostDetail() {
               </View>
 
               <T size={10} color={theme.muted} style={{ marginTop: space.md }}>
-                Price includes duties, fees and tax.
+                Price includes duties, fees and tax. 价格已含关税及所有费用。
               </T>
 
               {mine ? (

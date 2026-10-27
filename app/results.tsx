@@ -5,6 +5,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Header } from '../src/components/Header';
 import { Chip, Empty, Photo, Row, T } from '../src/components/ui';
 import { caseKg, priceLines, shipsLine } from '../src/listing';
+import { matches as matchesQuery, queryTerms, searchText } from '../src/search';
 import { SourcingRequest, useStore } from '../src/store';
 import { space, theme, track } from '../src/theme';
 import { CATEGORY_LABEL, Post } from '../src/types';
@@ -35,16 +36,15 @@ export default function Results() {
 
   const matches = useMemo(() => {
     if (!req) return [];
-    const words = req.text.toLowerCase().split(/\s+/).filter(Boolean);
+    const terms = queryTerms(req.text);
     return state.posts
       .filter((p) => p.listing?.active && p.userId !== me?.id)
       .filter((p) => req.category === 'all' || p.listing!.category === req.category)
       .filter((p) => !req.shippingIncluded || p.listing!.shippingIncluded)
       .filter((p) => !usOnly || p.listing!.shipsFrom === 'us')
       .filter((p) => {
-        if (!words.length) return true;
-        const hay = `${p.caption} ${CATEGORY_LABEL[p.listing!.category]}`.toLowerCase();
-        return words.every((w) => hay.includes(w));
+        if (!terms.length) return true;
+        return matchesQuery(terms, searchText(p.caption, p.listing!.category));
       })
       .filter((p) => fits(p, req))
       .sort((a, b) => a.listing!.pricePerKg - b.listing!.pricePerKg);

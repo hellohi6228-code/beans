@@ -12,12 +12,12 @@ export const SUPPLIER_TYPES: SupplierType[] = [
 ];
 
 export const SUPPLIER_LABEL: Record<SupplierType, string> = {
-  farmer: 'Farm / grower',
-  manufacturer: 'Manufacturer',
-  importer: 'Importer / distributor',
-  bulk: 'Bulk seller',
-  online_retail: 'Online retail',
-  coffee_shop: 'Shop / café',
+  farmer: 'Farm / grower 种植基地',
+  manufacturer: 'Manufacturer 生产厂家',
+  importer: 'Importer / distributor 进口经销',
+  bulk: 'Bulk seller 批发商',
+  online_retail: 'Online retail 网店',
+  coffee_shop: 'Shop / café 门店',
 };
 
 /** What a listing is. Ordered roughly by how restaurants and shops buy. */
@@ -26,13 +26,13 @@ export type Category = 'coffee' | 'tea' | 'snacks' | 'sauces' | 'noodles' | 'fro
 export const CATEGORIES: Category[] = ['coffee', 'tea', 'snacks', 'sauces', 'noodles', 'frozen', 'pantry'];
 
 export const CATEGORY_LABEL: Record<Category, string> = {
-  coffee: 'Coffee',
-  tea: 'Tea & boba',
-  snacks: 'Snacks',
-  sauces: 'Sauces & spices',
-  noodles: 'Noodles & rice',
-  frozen: 'Frozen',
-  pantry: 'Pantry',
+  coffee: 'Coffee 咖啡',
+  tea: 'Tea & boba 茶饮奶茶',
+  snacks: 'Snacks 零食',
+  sauces: 'Sauces & spices 调味品',
+  noodles: 'Noodles & rice 米面',
+  frozen: 'Frozen 速冻',
+  pantry: 'Pantry 粮油干货',
 };
 
 /** The nine major food allergens US labels must declare (sesame since 2023). */
@@ -49,6 +49,19 @@ export const ALLERGEN_LABEL: Record<Allergen, string> = {
   wheat: 'Wheat',
   soy: 'Soy',
   sesame: 'Sesame',
+};
+
+/** The same allergens as Chinese labels write them. */
+export const ALLERGEN_ZH: Record<Allergen, string> = {
+  milk: '乳',
+  eggs: '蛋',
+  fish: '鱼',
+  shellfish: '甲壳类',
+  tree_nuts: '坚果',
+  peanuts: '花生',
+  wheat: '小麦',
+  soy: '大豆',
+  sesame: '芝麻',
 };
 
 export type User = {

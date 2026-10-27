@@ -76,7 +76,7 @@ export default function Home() {
         <Field
           value={text}
           onChangeText={setText}
-          placeholder="Chili crisp, oolong, latiao…"
+          placeholder="辣条, chili crisp, 乌龙…"
           returnKeyType="search"
           onSubmitEditing={ready ? search : undefined}
           style={{ marginTop: space.lg }}
