@@ -189,7 +189,9 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
         const msg =
           err?.message?.includes('anonymous') || err?.code === 'anonymous_provider_disabled'
             ? 'Anonymous sign-ins are off for this Supabase project. Turn them on under Authentication → Sign In / Providers → Anonymous, then reload.'
-            : err?.message ?? 'Could not reach the backend.';
+            : !err?.message || /fetch|network/i.test(err.message)
+              ? 'Could not reach the backend.'
+              : err.message;
         setAuthError(msg);
         setHydrated(true);
       });
