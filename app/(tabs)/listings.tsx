@@ -6,6 +6,7 @@ import { Header } from '../../src/components/Header';
 import { Empty, Photo, Rule, T } from '../../src/components/ui';
 import { useStore } from '../../src/store';
 import { space, theme, track } from '../../src/theme';
+import { useLang } from '../../src/i18n';
 import { availableLine, categoryLabel, priceLines } from '../../src/listing';
 
 /** Every item this account is selling, one row each, with its on/off switch. */
@@ -13,6 +14,7 @@ export default function Listings() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { me, postsOf, toggleListing } = useStore();
+  const { lang } = useLang();
   if (!me) return null;
 
   const items = postsOf(me.id).filter((p) => p.listing);
@@ -53,10 +55,10 @@ export default function Listings() {
                           {p.caption || 'Post'}
                         </T>
                         <T size={11} weight="400">
-                          {priceLines(l).main} · {priceLines(l).sub}
+                          {priceLines(l, lang).main} · {priceLines(l, lang).sub}
                         </T>
                         <T size={9.5} color={theme.muted} style={{ letterSpacing: track.label }}>
-                          {categoryLabel(l)} · {availableLine(l)}
+                          {categoryLabel(l, lang)} · {availableLine(l, lang)}
                         </T>
                       </View>
                     </Pressable>

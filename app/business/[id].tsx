@@ -7,7 +7,7 @@ import { PostTile } from '../../src/components/PostTile';
 import { Avatar, Btn, Empty, Row, Rule, Sub, T } from '../../src/components/ui';
 import { useStore } from '../../src/store';
 import { space, theme, track } from '../../src/theme';
-import { SUPPLIER_LABEL } from '../../src/types';
+import { supplierName, useLang } from '../../src/i18n';
 
 const W = Dimensions.get('window').width;
 const TILE = (W - space.lg * 2 - 4) / 3;
@@ -17,6 +17,7 @@ export default function BusinessProfile() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { userById, postsOf, openThread, me } = useStore();
+  const { lang } = useLang();
 
   const user = userById(String(id));
   if (!user) return <Header back title="Not found" />;
@@ -39,7 +40,7 @@ export default function BusinessProfile() {
               </T>
               {user.supplierType ? (
                 <T size={10} color={theme.muted} style={{ letterSpacing: track.label, textTransform: 'uppercase' }}>
-                  {SUPPLIER_LABEL[user.supplierType]}
+                  {supplierName(user.supplierType, lang)}
                 </T>
               ) : null}
             </View>

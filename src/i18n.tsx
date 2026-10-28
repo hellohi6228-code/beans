@@ -1,0 +1,720 @@
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import React, { createContext, useContext, useEffect, useState } from 'react';
+import { Allergen, Category, Cuisine, Origin, SupplierType } from './types';
+
+// English is always shown. A second language, picked once per device, sits
+// next to it on what a listing says, so an owner who reads Korean or Spanish
+// first and the seller who wrote in English read the same line.
+
+export type Lang = 'en' | 'zh' | 'ko' | 'ja' | 'vi' | 'th' | 'es' | 'it';
+
+export const LANGS: { value: Lang; label: string }[] = [
+  { value: 'en', label: 'English' },
+  { value: 'zh', label: '中文' },
+  { value: 'ko', label: '한국어' },
+  { value: 'ja', label: '日本語' },
+  { value: 'vi', label: 'Tiếng Việt' },
+  { value: 'th', label: 'ไทย' },
+  { value: 'es', label: 'Español' },
+  { value: 'it', label: 'Italiano' },
+];
+
+type Words = {
+  category: Record<Category, string>;
+  cuisine: Record<Cuisine, string>;
+  origin: Record<Origin, string>;
+  allergen: Record<Allergen, string>;
+  supplier: Record<SupplierType, string>;
+  /** Joins a short list: 小麦、大豆 / wheat, soy. */
+  sep: string;
+  perCase: string;
+  pack: (n: number, size: string) => string;
+  stockCases: (n: number) => string;
+  stock: (weight: string) => string;
+  minCases: (n: number) => string;
+  min: (weight: string) => string;
+  usStock: string;
+  from: (origin: Origin, country: string, days: number | string) => string;
+  fda: string;
+  englishLabel: string;
+  contains: (list: string) => string;
+  noAllergens: string;
+  shipping: string;
+  noShipping: string;
+  duties: string;
+};
+
+const EN: Words = {
+  category: {
+    produce: 'Produce',
+    meat: 'Meat',
+    seafood: 'Seafood',
+    dairy: 'Dairy & cheese',
+    noodles: 'Rice, noodles & pasta',
+    sauces: 'Sauces & spices',
+    pantry: 'Pantry',
+    frozen: 'Frozen',
+    snacks: 'Snacks',
+    tea: 'Tea & boba',
+    coffee: 'Coffee',
+  },
+  cuisine: {
+    chinese: 'Chinese',
+    japanese: 'Japanese',
+    korean: 'Korean',
+    vietnamese: 'Vietnamese',
+    thai: 'Thai',
+    filipino: 'Filipino',
+    indian: 'Indian',
+    mediterranean: 'Mediterranean',
+    mexican: 'Mexican & Latin',
+    italian: 'Italian',
+    african: 'African & Caribbean',
+  },
+  origin: {
+    china: 'China',
+    taiwan: 'Taiwan',
+    japan: 'Japan',
+    korea: 'Korea',
+    vietnam: 'Vietnam',
+    thailand: 'Thailand',
+    philippines: 'the Philippines',
+    india: 'India',
+    mexico: 'Mexico',
+    italy: 'Italy',
+    other: 'abroad',
+  },
+  allergen: {
+    milk: 'Milk',
+    eggs: 'Eggs',
+    fish: 'Fish',
+    shellfish: 'Shellfish',
+    tree_nuts: 'Tree nuts',
+    peanuts: 'Peanuts',
+    wheat: 'Wheat',
+    soy: 'Soy',
+    sesame: 'Sesame',
+  },
+  supplier: {
+    farmer: 'Farm / grower',
+    manufacturer: 'Manufacturer',
+    importer: 'Importer / distributor',
+    bulk: 'Bulk seller',
+    online_retail: 'Online retail',
+    coffee_shop: 'Shop / café',
+  },
+  sep: ', ',
+  perCase: 'case',
+  pack: (n, size) => `${n} × ${size}`,
+  stockCases: (n) => `${n} cases available`,
+  stock: (w) => `${w} available`,
+  minCases: (n) => `Min ${n} ${n === 1 ? 'case' : 'cases'}`,
+  min: (w) => `Min ${w}`,
+  usStock: 'US stock',
+  from: (o, c, d) => (o === 'other' ? `From abroad · ${d} days` : `From ${c} · ${d} days`),
+  fda: 'FDA registered',
+  englishLabel: 'English label',
+  contains: (list) => `Contains ${list.toLowerCase()}`,
+  noAllergens: 'No major allergens',
+  shipping: 'Shipping included',
+  noShipping: 'Shipping not included',
+  duties: 'Price includes duties, fees and tax.',
+};
+
+const OTHER: Record<Exclude<Lang, 'en'>, Words> = {
+  zh: {
+    category: {
+      produce: '蔬果',
+      meat: '肉类',
+      seafood: '海鲜水产',
+      dairy: '乳制品',
+      noodles: '米面',
+      sauces: '调味品',
+      pantry: '粮油干货',
+      frozen: '速冻',
+      snacks: '零食',
+      tea: '茶饮奶茶',
+      coffee: '咖啡',
+    },
+    cuisine: {
+      chinese: '中餐',
+      japanese: '日料',
+      korean: '韩餐',
+      vietnamese: '越南菜',
+      thai: '泰餐',
+      filipino: '菲律宾菜',
+      indian: '印度菜',
+      mediterranean: '地中海菜',
+      mexican: '墨西哥拉美菜',
+      italian: '意大利菜',
+      african: '非洲加勒比菜',
+    },
+    origin: {
+      china: '中国',
+      taiwan: '台湾',
+      japan: '日本',
+      korea: '韩国',
+      vietnam: '越南',
+      thailand: '泰国',
+      philippines: '菲律宾',
+      india: '印度',
+      mexico: '墨西哥',
+      italy: '意大利',
+      other: '海外',
+    },
+    allergen: {
+      milk: '乳',
+      eggs: '蛋',
+      fish: '鱼',
+      shellfish: '甲壳类',
+      tree_nuts: '坚果',
+      peanuts: '花生',
+      wheat: '小麦',
+      soy: '大豆',
+      sesame: '芝麻',
+    },
+    supplier: {
+      farmer: '种植基地',
+      manufacturer: '生产厂家',
+      importer: '进口经销',
+      bulk: '批发商',
+      online_retail: '网店',
+      coffee_shop: '门店',
+    },
+    sep: '、',
+    perCase: '箱',
+    pack: (n, size) => `箱规 ${n}×${size}`,
+    stockCases: (n) => `库存${n}箱`,
+    stock: (w) => `库存 ${w}`,
+    minCases: (n) => `起订量 ${n}箱`,
+    min: (w) => `起订量 ${w}`,
+    usStock: '美国现货',
+    from: (_o, c, d) => `${c}发货 · ${d}天`,
+    fda: 'FDA注册',
+    englishLabel: '英文标签',
+    contains: (list) => `含${list}`,
+    noAllergens: '不含主要过敏原',
+    shipping: '包邮',
+    noShipping: '不包邮',
+    duties: '价格已含关税及所有费用。',
+  },
+  ko: {
+    category: {
+      produce: '채소·과일',
+      meat: '육류',
+      seafood: '수산물',
+      dairy: '유제품·치즈',
+      noodles: '쌀·면',
+      sauces: '소스·양념',
+      pantry: '건식품',
+      frozen: '냉동식품',
+      snacks: '과자·스낵',
+      tea: '차·버블티',
+      coffee: '커피',
+    },
+    cuisine: {
+      chinese: '중식',
+      japanese: '일식',
+      korean: '한식',
+      vietnamese: '베트남 음식',
+      thai: '태국 음식',
+      filipino: '필리핀 음식',
+      indian: '인도 음식',
+      mediterranean: '지중해 음식',
+      mexican: '멕시코·중남미 음식',
+      italian: '이탈리안',
+      african: '아프리카·카리브 음식',
+    },
+    origin: {
+      china: '중국',
+      taiwan: '대만',
+      japan: '일본',
+      korea: '한국',
+      vietnam: '베트남',
+      thailand: '태국',
+      philippines: '필리핀',
+      india: '인도',
+      mexico: '멕시코',
+      italy: '이탈리아',
+      other: '해외',
+    },
+    allergen: {
+      milk: '우유',
+      eggs: '달걀',
+      fish: '생선',
+      shellfish: '갑각류',
+      tree_nuts: '견과류',
+      peanuts: '땅콩',
+      wheat: '밀',
+      soy: '대두',
+      sesame: '참깨',
+    },
+    supplier: {
+      farmer: '농장·재배자',
+      manufacturer: '제조사',
+      importer: '수입·유통',
+      bulk: '도매상',
+      online_retail: '온라인 판매',
+      coffee_shop: '매장·카페',
+    },
+    sep: ', ',
+    perCase: '박스',
+    pack: (n, size) => `박스당 ${n}×${size}`,
+    stockCases: (n) => `재고 ${n}박스`,
+    stock: (w) => `재고 ${w}`,
+    minCases: (n) => `최소 주문 ${n}박스`,
+    min: (w) => `최소 주문 ${w}`,
+    usStock: '미국 재고',
+    from: (_o, c, d) => `${c}에서 발송 · ${d}일`,
+    fda: 'FDA 등록',
+    englishLabel: '영문 라벨',
+    contains: (list) => `함유: ${list}`,
+    noAllergens: '주요 알레르기 유발 성분 없음',
+    shipping: '배송비 포함',
+    noShipping: '배송비 별도',
+    duties: '관세, 수수료, 세금이 포함된 가격입니다.',
+  },
+  ja: {
+    category: {
+      produce: '青果',
+      meat: '精肉',
+      seafood: '水産物',
+      dairy: '乳製品・チーズ',
+      noodles: '米・麺',
+      sauces: '調味料',
+      pantry: '乾物・食材',
+      frozen: '冷凍食品',
+      snacks: 'お菓子・スナック',
+      tea: 'お茶・タピオカ',
+      coffee: 'コーヒー',
+    },
+    cuisine: {
+      chinese: '中華',
+      japanese: '和食',
+      korean: '韓国料理',
+      vietnamese: 'ベトナム料理',
+      thai: 'タイ料理',
+      filipino: 'フィリピン料理',
+      indian: 'インド料理',
+      mediterranean: '地中海料理',
+      mexican: 'メキシコ・中南米料理',
+      italian: 'イタリアン',
+      african: 'アフリカ・カリブ料理',
+    },
+    origin: {
+      china: '中国',
+      taiwan: '台湾',
+      japan: '日本',
+      korea: '韓国',
+      vietnam: 'ベトナム',
+      thailand: 'タイ',
+      philippines: 'フィリピン',
+      india: 'インド',
+      mexico: 'メキシコ',
+      italy: 'イタリア',
+      other: '海外',
+    },
+    allergen: {
+      milk: '乳',
+      eggs: '卵',
+      fish: '魚',
+      shellfish: '甲殻類',
+      tree_nuts: 'ナッツ類',
+      peanuts: '落花生',
+      wheat: '小麦',
+      soy: '大豆',
+      sesame: 'ごま',
+    },
+    supplier: {
+      farmer: '農家・生産者',
+      manufacturer: 'メーカー',
+      importer: '輸入・卸',
+      bulk: '卸売業者',
+      online_retail: 'ネットショップ',
+      coffee_shop: '店舗・カフェ',
+    },
+    sep: '・',
+    perCase: 'ケース',
+    pack: (n, size) => `1ケース ${n}×${size}`,
+    stockCases: (n) => `在庫 ${n}ケース`,
+    stock: (w) => `在庫 ${w}`,
+    minCases: (n) => `最低注文 ${n}ケース`,
+    min: (w) => `最低注文 ${w}`,
+    usStock: '米国在庫',
+    from: (_o, c, d) => `${c}から発送 · ${d}日`,
+    fda: 'FDA登録',
+    englishLabel: '英語ラベル',
+    contains: (list) => `${list}を含む`,
+    noAllergens: '主要アレルゲンなし',
+    shipping: '送料込み',
+    noShipping: '送料別',
+    duties: '関税・手数料・税込みの価格です。',
+  },
+  vi: {
+    category: {
+      produce: 'Rau củ quả',
+      meat: 'Thịt',
+      seafood: 'Hải sản',
+      dairy: 'Sữa & phô mai',
+      noodles: 'Gạo, bún, mì',
+      sauces: 'Nước chấm & gia vị',
+      pantry: 'Đồ khô',
+      frozen: 'Đông lạnh',
+      snacks: 'Đồ ăn vặt',
+      tea: 'Trà & trà sữa',
+      coffee: 'Cà phê',
+    },
+    cuisine: {
+      chinese: 'Món Hoa',
+      japanese: 'Món Nhật',
+      korean: 'Món Hàn',
+      vietnamese: 'Món Việt',
+      thai: 'Món Thái',
+      filipino: 'Món Philippines',
+      indian: 'Món Ấn',
+      mediterranean: 'Món Địa Trung Hải',
+      mexican: 'Món Mexico & Mỹ Latinh',
+      italian: 'Món Ý',
+      african: 'Món Phi & Caribe',
+    },
+    origin: {
+      china: 'Trung Quốc',
+      taiwan: 'Đài Loan',
+      japan: 'Nhật Bản',
+      korea: 'Hàn Quốc',
+      vietnam: 'Việt Nam',
+      thailand: 'Thái Lan',
+      philippines: 'Philippines',
+      india: 'Ấn Độ',
+      mexico: 'Mexico',
+      italy: 'Ý',
+      other: 'nước ngoài',
+    },
+    allergen: {
+      milk: 'sữa',
+      eggs: 'trứng',
+      fish: 'cá',
+      shellfish: 'giáp xác',
+      tree_nuts: 'hạt cây',
+      peanuts: 'đậu phộng',
+      wheat: 'lúa mì',
+      soy: 'đậu nành',
+      sesame: 'mè',
+    },
+    supplier: {
+      farmer: 'Nông trại',
+      manufacturer: 'Nhà sản xuất',
+      importer: 'Nhập khẩu / phân phối',
+      bulk: 'Bán sỉ',
+      online_retail: 'Bán online',
+      coffee_shop: 'Cửa hàng / quán',
+    },
+    sep: ', ',
+    perCase: 'thùng',
+    pack: (n, size) => `${n}×${size}/thùng`,
+    stockCases: (n) => `Còn ${n} thùng`,
+    stock: (w) => `Còn ${w}`,
+    minCases: (n) => `Tối thiểu ${n} thùng`,
+    min: (w) => `Tối thiểu ${w}`,
+    usStock: 'Có sẵn tại Mỹ',
+    from: (_o, c, d) => `Gửi từ ${c} · ${d} ngày`,
+    fda: 'Đã đăng ký FDA',
+    englishLabel: 'Nhãn tiếng Anh',
+    contains: (list) => `Có chứa ${list}`,
+    noAllergens: 'Không chứa chất gây dị ứng chính',
+    shipping: 'Đã gồm phí vận chuyển',
+    noShipping: 'Chưa gồm phí vận chuyển',
+    duties: 'Giá đã gồm thuế nhập khẩu, phí và thuế.',
+  },
+  th: {
+    category: {
+      produce: 'ผักผลไม้',
+      meat: 'เนื้อสัตว์',
+      seafood: 'อาหารทะเล',
+      dairy: 'นมและชีส',
+      noodles: 'ข้าว เส้น พาสต้า',
+      sauces: 'ซอสและเครื่องเทศ',
+      pantry: 'ของแห้ง',
+      frozen: 'อาหารแช่แข็ง',
+      snacks: 'ขนม',
+      tea: 'ชาและชานมไข่มุก',
+      coffee: 'กาแฟ',
+    },
+    cuisine: {
+      chinese: 'อาหารจีน',
+      japanese: 'อาหารญี่ปุ่น',
+      korean: 'อาหารเกาหลี',
+      vietnamese: 'อาหารเวียดนาม',
+      thai: 'อาหารไทย',
+      filipino: 'อาหารฟิลิปปินส์',
+      indian: 'อาหารอินเดีย',
+      mediterranean: 'อาหารเมดิเตอร์เรเนียน',
+      mexican: 'อาหารเม็กซิกันและลาติน',
+      italian: 'อาหารอิตาเลียน',
+      african: 'อาหารแอฟริกันและแคริบเบียน',
+    },
+    origin: {
+      china: 'จีน',
+      taiwan: 'ไต้หวัน',
+      japan: 'ญี่ปุ่น',
+      korea: 'เกาหลี',
+      vietnam: 'เวียดนาม',
+      thailand: 'ไทย',
+      philippines: 'ฟิลิปปินส์',
+      india: 'อินเดีย',
+      mexico: 'เม็กซิโก',
+      italy: 'อิตาลี',
+      other: 'ต่างประเทศ',
+    },
+    allergen: {
+      milk: 'นม',
+      eggs: 'ไข่',
+      fish: 'ปลา',
+      shellfish: 'สัตว์น้ำมีเปลือก',
+      tree_nuts: 'ถั่วเปลือกแข็ง',
+      peanuts: 'ถั่วลิสง',
+      wheat: 'ข้าวสาลี',
+      soy: 'ถั่วเหลือง',
+      sesame: 'งา',
+    },
+    supplier: {
+      farmer: 'ฟาร์ม / ผู้ปลูก',
+      manufacturer: 'ผู้ผลิต',
+      importer: 'ผู้นำเข้า / ผู้จัดจำหน่าย',
+      bulk: 'ผู้ค้าส่ง',
+      online_retail: 'ร้านค้าออนไลน์',
+      coffee_shop: 'ร้านค้า / คาเฟ่',
+    },
+    sep: ', ',
+    perCase: 'ลัง',
+    pack: (n, size) => `ลังละ ${n}×${size}`,
+    stockCases: (n) => `มีสต็อก ${n} ลัง`,
+    stock: (w) => `มีสต็อก ${w}`,
+    minCases: (n) => `สั่งขั้นต่ำ ${n} ลัง`,
+    min: (w) => `สั่งขั้นต่ำ ${w}`,
+    usStock: 'มีสต็อกในสหรัฐฯ',
+    from: (_o, c, d) => `ส่งจาก${c} · ${d} วัน`,
+    fda: 'ขึ้นทะเบียน FDA',
+    englishLabel: 'ฉลากภาษาอังกฤษ',
+    contains: (list) => `มีส่วนผสมของ${list}`,
+    noAllergens: 'ไม่มีสารก่อภูมิแพ้หลัก',
+    shipping: 'รวมค่าส่ง',
+    noShipping: 'ไม่รวมค่าส่ง',
+    duties: 'ราคารวมภาษีนำเข้า ค่าธรรมเนียม และภาษีแล้ว',
+  },
+  es: {
+    category: {
+      produce: 'Frutas y verduras',
+      meat: 'Carnes',
+      seafood: 'Pescados y mariscos',
+      dairy: 'Lácteos y quesos',
+      noodles: 'Arroz, fideos y pasta',
+      sauces: 'Salsas y especias',
+      pantry: 'Despensa',
+      frozen: 'Congelados',
+      snacks: 'Botanas',
+      tea: 'Té y boba',
+      coffee: 'Café',
+    },
+    cuisine: {
+      chinese: 'China',
+      japanese: 'Japonesa',
+      korean: 'Coreana',
+      vietnamese: 'Vietnamita',
+      thai: 'Tailandesa',
+      filipino: 'Filipina',
+      indian: 'India',
+      mediterranean: 'Mediterránea',
+      mexican: 'Mexicana y latina',
+      italian: 'Italiana',
+      african: 'Africana y caribeña',
+    },
+    origin: {
+      china: 'China',
+      taiwan: 'Taiwán',
+      japan: 'Japón',
+      korea: 'Corea',
+      vietnam: 'Vietnam',
+      thailand: 'Tailandia',
+      philippines: 'Filipinas',
+      india: 'India',
+      mexico: 'México',
+      italy: 'Italia',
+      other: 'el extranjero',
+    },
+    allergen: {
+      milk: 'leche',
+      eggs: 'huevo',
+      fish: 'pescado',
+      shellfish: 'mariscos',
+      tree_nuts: 'nueces',
+      peanuts: 'cacahuate',
+      wheat: 'trigo',
+      soy: 'soya',
+      sesame: 'ajonjolí',
+    },
+    supplier: {
+      farmer: 'Granja / productor',
+      manufacturer: 'Fabricante',
+      importer: 'Importador / distribuidor',
+      bulk: 'Mayorista',
+      online_retail: 'Tienda en línea',
+      coffee_shop: 'Tienda / café',
+    },
+    sep: ', ',
+    perCase: 'caja',
+    pack: (n, size) => `caja de ${n}×${size}`,
+    stockCases: (n) => `${n} ${n === 1 ? 'caja disponible' : 'cajas disponibles'}`,
+    stock: (w) => `${w} disponibles`,
+    minCases: (n) => `Pedido mínimo ${n} ${n === 1 ? 'caja' : 'cajas'}`,
+    min: (w) => `Pedido mínimo ${w}`,
+    usStock: 'En existencia en EE. UU.',
+    from: (_o, c, d) => `Desde ${c} · ${d} días`,
+    fda: 'Registrado ante la FDA',
+    englishLabel: 'Etiqueta en inglés',
+    contains: (list) => `Contiene ${list}`,
+    noAllergens: 'Sin alérgenos principales',
+    shipping: 'Envío incluido',
+    noShipping: 'Envío no incluido',
+    duties: 'El precio incluye aranceles, cargos e impuestos.',
+  },
+  it: {
+    category: {
+      produce: 'Frutta e verdura',
+      meat: 'Carne',
+      seafood: 'Pesce',
+      dairy: 'Latticini e formaggi',
+      noodles: 'Riso e pasta',
+      sauces: 'Salse e spezie',
+      pantry: 'Dispensa',
+      frozen: 'Surgelati',
+      snacks: 'Snack',
+      tea: 'Tè e bubble tea',
+      coffee: 'Caffè',
+    },
+    cuisine: {
+      chinese: 'Cinese',
+      japanese: 'Giapponese',
+      korean: 'Coreana',
+      vietnamese: 'Vietnamita',
+      thai: 'Thailandese',
+      filipino: 'Filippina',
+      indian: 'Indiana',
+      mediterranean: 'Mediterranea',
+      mexican: 'Messicana e latina',
+      italian: 'Italiana',
+      african: 'Africana e caraibica',
+    },
+    origin: {
+      china: 'Cina',
+      taiwan: 'Taiwan',
+      japan: 'Giappone',
+      korea: 'Corea',
+      vietnam: 'Vietnam',
+      thailand: 'Thailandia',
+      philippines: 'Filippine',
+      india: 'India',
+      mexico: 'Messico',
+      italy: 'Italia',
+      other: 'estero',
+    },
+    allergen: {
+      milk: 'latte',
+      eggs: 'uova',
+      fish: 'pesce',
+      shellfish: 'crostacei',
+      tree_nuts: 'frutta a guscio',
+      peanuts: 'arachidi',
+      wheat: 'grano',
+      soy: 'soia',
+      sesame: 'sesamo',
+    },
+    supplier: {
+      farmer: 'Azienda agricola',
+      manufacturer: 'Produttore',
+      importer: 'Importatore / distributore',
+      bulk: 'Grossista',
+      online_retail: 'Negozio online',
+      coffee_shop: 'Negozio / bar',
+    },
+    sep: ', ',
+    perCase: 'cartone',
+    pack: (n, size) => `cartone da ${n}×${size}`,
+    stockCases: (n) => `${n} ${n === 1 ? 'cartone disponibile' : 'cartoni disponibili'}`,
+    stock: (w) => `${w} disponibili`,
+    minCases: (n) => `Ordine minimo ${n} ${n === 1 ? 'cartone' : 'cartoni'}`,
+    min: (w) => `Ordine minimo ${w}`,
+    usStock: 'Disponibile negli USA',
+    // Italian country names take different articles, so name the origin plainly.
+    from: (_o, c, d) => `Origine: ${c} · ${d} giorni`,
+    fda: 'Registrato FDA',
+    englishLabel: 'Etichetta in inglese',
+    contains: (list) => `Contiene ${list}`,
+    noAllergens: 'Senza allergeni principali',
+    shipping: 'Spedizione inclusa',
+    noShipping: 'Spedizione esclusa',
+    duties: 'Il prezzo include dazi, commissioni e tasse.',
+  },
+};
+
+export const en = EN;
+
+/** The second language's words, or null when English is all that's wanted. */
+export const words = (lang: Lang): Words | null => (lang === 'en' ? null : OTHER[lang]);
+
+/** "Snacks 零食" — for chips and labels. */
+export const pair = (english: string, other?: string | null) => (other ? `${english} ${other}` : english);
+
+/** "US stock · 美国现货" — for listing lines. */
+export const line = (english: string, other?: string | null) => (other ? `${english} · ${other}` : english);
+
+export const categoryName = (c: Category, lang: Lang) => pair(EN.category[c], words(lang)?.category[c]);
+export const cuisineName = (c: Cuisine, lang: Lang) => pair(EN.cuisine[c], words(lang)?.cuisine[c]);
+export const allergenName = (a: Allergen, lang: Lang) => pair(EN.allergen[a], words(lang)?.allergen[a]);
+export const supplierName = (t: SupplierType, lang: Lang) => pair(EN.supplier[t], words(lang)?.supplier[t]);
+export const originName = (o: Origin, lang: Lang) =>
+  pair(o === 'other' ? 'Other' : EN.origin[o].replace(/^the /, ''), words(lang)?.origin[o]);
+
+/** Every language's names for a category, cuisine or origin — what search matches against. */
+export const allNames = {
+  category: (c: Category) => [EN.category[c], ...Object.values(OTHER).map((w) => w.category[c])],
+  cuisine: (c: Cuisine) => [EN.cuisine[c], ...Object.values(OTHER).map((w) => w.cuisine[c])],
+  origin: (o: Origin) => [EN.origin[o], ...Object.values(OTHER).map((w) => w.origin[o])],
+};
+
+// ------------------------------------------------------------ the choice --
+
+const KEY = 'beans.lang';
+
+/** The device's language when it is one we have, else English. */
+function deviceLang(): Lang {
+  try {
+    const tag = Intl.DateTimeFormat().resolvedOptions().locale.slice(0, 2).toLowerCase();
+    return LANGS.some((l) => l.value === tag) ? (tag as Lang) : 'en';
+  } catch {
+    return 'en';
+  }
+}
+
+const LangCtx = createContext<{ lang: Lang; setLang: (l: Lang) => void }>({ lang: 'en', setLang: () => {} });
+
+export function LangProvider({ children }: { children: React.ReactNode }) {
+  const [lang, setLangState] = useState<Lang>(deviceLang);
+
+  useEffect(() => {
+    AsyncStorage.getItem(KEY)
+      .then((saved) => {
+        if (saved && LANGS.some((l) => l.value === saved)) setLangState(saved as Lang);
+      })
+      .catch(() => {});
+  }, []);
+
+  const setLang = (l: Lang) => {
+    setLangState(l);
+    AsyncStorage.setItem(KEY, l).catch(() => {});
+  };
+
+  return <LangCtx.Provider value={{ lang, setLang }}>{children}</LangCtx.Provider>;
+}
+
+export const useLang = () => useContext(LangCtx);

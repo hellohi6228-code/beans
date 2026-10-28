@@ -1,7 +1,9 @@
 # Beans
 
-Coffee bean sourcing for iOS and Android. One Expo (SDK 57) codebase, expo-router,
-backed by Supabase.
+Wholesale food sourcing for immigrant-run restaurants in the US — Chinese, Japanese,
+Korean, Vietnamese, Thai, Filipino, Indian, Mediterranean, Mexican and Latin, Italian,
+African and Caribbean kitchens. iOS, Android and web from one Expo (SDK 57) codebase,
+expo-router, backed by Supabase.
 
 ```bash
 npx expo start
@@ -22,8 +24,10 @@ publishable key). Two things need doing once, by whoever owns that project:
    storage bucket, and turns on Realtime; `0002_food_catalogue.sql` adds categories,
    case packs, minimum orders, ships-from and label facts to listings;
    `0003_case_check_nulls.sql` makes the database refuse a case listing with missing
-   case details. All are safe to re-run. If the `photos` bucket doesn't appear under Storage afterwards, create it by
-   hand: New bucket → `photos` → Public.
+   case details; `0004_global_kitchens.sql` adds fresh-food categories, the kitchens a
+   listing is for, and more countries to ship from. All are safe to re-run. If the
+   `photos` bucket doesn't appear under Storage afterwards, create it by hand: New
+   bucket → `photos` → Public.
 2. **Turn on anonymous sign-ins.** Authentication → Sign In / Providers → Anonymous.
    There is no sign-up screen — the first launch on a device signs in anonymously and
    everything after that hangs off that identity, the same way the app being tied to a
@@ -36,7 +40,11 @@ Until both are done, the app boots to that message instead of the sourcing scree
 
 - Opens straight into the app. No sign up, no sign out — one account per device,
   backed by a real anonymous Supabase user.
-- Front page: how much coffee, kg or lb, shipping included yes/no plus one US address box.
+- Front page: pick a language, a kitchen (Korean, Mexican & Latin…) and a kind of food,
+  search in any of eight languages, say how much in kg, lb or cases, and whether
+  shipping is included.
+- Every listing line shows in English and the reader's own language (中文, 한국어,
+  日本語, Tiếng Việt, ไทย, Español, Italiano), picked once per device.
 - "I am also a supplier" turns the account into a farmer, bulk seller, online retail or
   coffee shop, which unlocks listing. Turning it back off switches every listing off too;
   the posts stay, so switching supplying back on leaves them all off until turned on again.

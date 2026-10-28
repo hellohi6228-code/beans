@@ -7,18 +7,21 @@ import { Btn, Field, Label, T } from '../src/components/ui';
 import { uploadPhoto } from '../src/lib/supabase';
 import { useStore } from '../src/store';
 import { space, theme, track } from '../src/theme';
-import { SUPPLIER_LABEL, SUPPLIER_TYPES, SupplierType } from '../src/types';
+import { Lang, supplierName, useLang } from '../src/i18n';
+import { SUPPLIER_TYPES, SupplierType } from '../src/types';
 
 type Choice = SupplierType | 'none';
 
-const OPTIONS: { value: Choice; label: string }[] = [
+const options = (lang: Lang): { value: Choice; label: string }[] => [
   { value: 'none', label: 'Not selling' },
-  ...SUPPLIER_TYPES.map((t) => ({ value: t, label: SUPPLIER_LABEL[t] })),
+  ...SUPPLIER_TYPES.map((t) => ({ value: t, label: supplierName(t, lang) })),
 ];
 
 export default function EditProfile() {
   const router = useRouter();
   const { me, updateMe } = useStore();
+  const { lang } = useLang();
+  const OPTIONS = options(lang);
 
   const [name, setName] = useState(me?.name ?? '');
   const [bio, setBio] = useState(me?.bio ?? '');

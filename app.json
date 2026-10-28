@@ -11,7 +11,7 @@
       "supportsTablet": true,
       "bundleIdentifier": "com.beans.sourcing",
       "infoPlist": {
-        "NSCameraUsageDescription": "Beans uses your camera so you can photograph your coffee beans, your shop and your events.",
+        "NSCameraUsageDescription": "Beans uses your camera so you can photograph what you sell and your business.",
         "NSPhotoLibraryUsageDescription": "Beans needs access to your photos so you can upload pictures of your beans and your business."
       }
     },
@@ -38,7 +38,7 @@
         "expo-image-picker",
         {
           "photosPermission": "Beans needs access to your photos so you can upload pictures of your beans and your business.",
-          "cameraPermission": "Beans uses your camera so you can photograph your coffee beans, your shop and your events."
+          "cameraPermission": "Beans uses your camera so you can photograph what you sell and your business."
         }
       ],
       [

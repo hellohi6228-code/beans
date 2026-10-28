@@ -7,7 +7,19 @@ import { Btn, Checkbox, Chip, Field, Label, Row, Rule, Segmented, T } from '../s
 import { uploadPhotos } from '../src/lib/supabase';
 import { useStore } from '../src/store';
 import { space, theme, track } from '../src/theme';
-import { ALLERGENS, ALLERGEN_LABEL, ALLERGEN_ZH, Allergen, CATEGORIES, CATEGORY_LABEL, Category, ListingPart } from '../src/types';
+import { allergenName, categoryName, cuisineName, en, originName, pair, useLang, words } from '../src/i18n';
+import { dutiesLine } from '../src/listing';
+import {
+  ALLERGENS,
+  Allergen,
+  CATEGORIES,
+  CUISINES,
+  Category,
+  Cuisine,
+  ListingPart,
+  ORIGINS,
+  Origin,
+} from '../src/types';
 import {
   KG_PER_LB,
   Unit,
@@ -28,12 +40,14 @@ const n = (s: string) => {
 export default function NewPost() {
   const router = useRouter();
   const { addPost, me } = useStore();
+  const { lang } = useLang();
 
   const [photos, setPhotos] = useState<string[]>([]);
   const [caption, setCaption] = useState('');
 
   const [selling, setSelling] = useState(false);
   const [category, setCategory] = useState<Category | null>(null);
+  const [cuisines, setCuisines] = useState<Cuisine[]>([]);
   const [sellBy, setSellBy] = useState<'weight' | 'case'>('weight');
   const [unit, setUnit] = useState<Unit>('kg');
 
@@ -47,7 +61,7 @@ export default function NewPost() {
   const [cases, setCases] = useState('');
 
   const [minOrder, setMinOrder] = useState('');
-  const [shipsFrom, setShipsFrom] = useState<'us' | 'china'>('us');
+  const [shipsFrom, setShipsFrom] = useState<'us' | Origin>('us');
   const [leadDays, setLeadDays] = useState('');
   const [fdaRegistered, setFdaRegistered] = useState(false);
   const [englishLabel, setEnglishLabel] = useState(false);
@@ -83,6 +97,8 @@ export default function NewPost() {
 
   const toggleAllergen = (a: Allergen) =>
     setAllergens((list) => (list.includes(a) ? list.filter((x) => x !== a) : [...list, a]));
+  const toggleCuisine = (c: Cuisine) =>
+    setCuisines((list) => (list.includes(c) ? list.filter((x) => x !== c) : [...list, c]));
 
   const submit = async () => {
     if (!me) return;
@@ -100,8 +116,9 @@ export default function NewPost() {
                 ? { pricePerCase: n(casePrice), unitsPerCase, unitKg, casesAvailable }
                 : {}),
               minOrder: minOrderValue,
+              cuisines,
               shipsFrom,
-              leadDays: shipsFrom === 'china' ? Math.round(n(leadDays)) : undefined,
+              leadDays: shipsFrom !== 'us' ? Math.round(n(leadDays)) : undefined,
               fdaRegistered,
               englishLabel,
               allergens,
@@ -146,7 +163,21 @@ export default function NewPost() {
                   <Label>Category</Label>
                   <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>
                     {CATEGORIES.map((c) => (
-                      <Chip key={c} label={CATEGORY_LABEL[c]} selected={category === c} onPress={() => setCategory(c)} />
+                      <Chip key={c} label={categoryName(c, lang)} selected={category === c} onPress={() => setCategory(c)} />
+                    ))}
+                  </View>
+                </View>
+
+                <View style={{ gap: space.sm }}>
+                  <Label>For kitchens</Label>
+                  <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>
+                    {CUISINES.map((c) => (
+                      <Chip
+                        key={c}
+                        label={cuisineName(c, lang)}
+                        selected={cuisines.includes(c)}
+                        onPress={() => toggleCuisine(c)}
+                      />
                     ))}
                   </View>
                 </View>
@@ -275,17 +306,19 @@ export default function NewPost() {
 
                 <View style={{ gap: space.sm }}>
                   <Label>Ships from</Label>
-                  <Segmented
-                    value={shipsFrom}
-                    onChange={setShipsFrom}
-                    options={[
-                      { value: 'us', label: 'US stock' },
-                      { value: 'china', label: 'China' },
-                    ]}
-                  />
+                  <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>
+                    <Chip
+                      label={pair(en.usStock, words(lang)?.usStock)}
+                      selected={shipsFrom === 'us'}
+                      onPress={() => setShipsFrom('us')}
+                    />
+                    {ORIGINS.map((o) => (
+                      <Chip key={o} label={originName(o, lang)} selected={shipsFrom === o} onPress={() => setShipsFrom(o)} />
+                    ))}
+                  </View>
                 </View>
 
-                {shipsFrom === 'china' ? (
+                {shipsFrom !== 'us' ? (
                   <Field
                     label="Lead time (days)"
                     value={leadDays}
@@ -308,7 +341,7 @@ export default function NewPost() {
                     {ALLERGENS.map((a) => (
                       <Chip
                         key={a}
-                        label={`${ALLERGEN_LABEL[a]} ${ALLERGEN_ZH[a]}`}
+                        label={allergenName(a, lang)}
                         selected={allergens.includes(a)}
                         onPress={() => toggleAllergen(a)}
                       />
@@ -323,7 +356,7 @@ export default function NewPost() {
                 />
 
                 <T size={11} color={theme.muted} style={{ lineHeight: 16 }}>
-                  Your price includes duties, fees and tax.
+                  {dutiesLine(lang)}
                 </T>
               </>
             ) : null}

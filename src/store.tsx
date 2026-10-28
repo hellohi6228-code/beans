@@ -2,13 +2,14 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import type { RealtimeChannel } from '@supabase/supabase-js';
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { ensureSession, supabase } from './lib/supabase';
-import { Category, Message, Post, Report, SupplierType, Thread, User } from './types';
+import { Category, Cuisine, Message, Post, Report, SupplierType, Thread, User } from './types';
 import { Unit } from './units';
 
 /** What the front page asks. Everything but shipping is optional. */
 export type SourcingRequest = {
   text: string;
   category: Category | 'all';
+  cuisine: Cuisine | 'all';
   /** 0 means any amount. */
   qty: number;
   unit: Unit | 'case';
@@ -88,6 +89,7 @@ const postFromRow = (r: any): Post => ({
           unitKg: r.unit_kg != null ? Number(r.unit_kg) : undefined,
           casesAvailable: r.cases_available ?? undefined,
           minOrder: Number(r.min_order ?? 0),
+          cuisines: r.cuisines ?? [],
           shipsFrom: r.ships_from ?? 'us',
           leadDays: r.lead_days ?? undefined,
           fdaRegistered: !!r.fda_registered,
@@ -419,6 +421,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
               unit_kg: l.unitKg ?? null,
               cases_available: l.casesAvailable ?? null,
               min_order: l.minOrder,
+              cuisines: l.cuisines,
               ships_from: l.shipsFrom,
               lead_days: l.leadDays ?? null,
               fda_registered: l.fdaRegistered,

@@ -8,7 +8,8 @@ import { caseKg, priceLines, shipsLine } from '../src/listing';
 import { matches as matchesQuery, queryTerms, searchText } from '../src/search';
 import { SourcingRequest, useStore } from '../src/store';
 import { space, theme, track } from '../src/theme';
-import { CATEGORY_LABEL, Post } from '../src/types';
+import { categoryName, cuisineName, useLang } from '../src/i18n';
+import { Post } from '../src/types';
 import { weightParts } from '../src/units';
 
 const W = Dimensions.get('window').width;
@@ -29,6 +30,7 @@ export default function Results() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { state, userById, me } = useStore();
+  const { lang } = useLang();
   const req = state.request;
   // Tariffs and the end of de minimis made "already here" the question
   // buyers ask first, so it gets its own switch.
@@ -40,11 +42,12 @@ export default function Results() {
     return state.posts
       .filter((p) => p.listing?.active && p.userId !== me?.id)
       .filter((p) => req.category === 'all' || p.listing!.category === req.category)
+      .filter((p) => req.cuisine === 'all' || p.listing!.cuisines.includes(req.cuisine))
       .filter((p) => !req.shippingIncluded || p.listing!.shippingIncluded)
       .filter((p) => !usOnly || p.listing!.shipsFrom === 'us')
       .filter((p) => {
         if (!terms.length) return true;
-        return matchesQuery(terms, searchText(p.caption, p.listing!.category));
+        return matchesQuery(terms, searchText(p.caption, p.listing!));
       })
       .filter((p) => fits(p, req))
       .sort((a, b) => a.listing!.pricePerKg - b.listing!.pricePerKg);
@@ -59,7 +62,13 @@ export default function Results() {
     );
   }
 
-  const what = [req.text, req.category === 'all' ? null : CATEGORY_LABEL[req.category]].filter(Boolean).join(' · ');
+  const what = [
+    req.text,
+    req.cuisine === 'all' ? null : cuisineName(req.cuisine, lang),
+    req.category === 'all' ? null : categoryName(req.category, lang),
+  ]
+    .filter(Boolean)
+    .join(' · ');
   const amount = !req.qty
     ? null
     : req.unit === 'case'
@@ -86,13 +95,13 @@ export default function Results() {
             {matches.map((p) => {
               const l = p.listing!;
               const seller = userById(p.userId);
-              const price = priceLines(l);
+              const price = priceLines(l, lang);
               return (
                 <Pressable key={p.id} onPress={() => router.push(`/post/${p.id}`)} style={{ width: COL }}>
                   <Photo uri={p.photos[0]} style={{ width: COL, height: COL * 1.35 }} />
                   <View style={{ paddingVertical: space.md, gap: 3 }}>
                     <T size={12} weight="300" numberOfLines={1}>
-                      {p.caption || CATEGORY_LABEL[l.category]}
+                      {p.caption || categoryName(l.category, lang)}
                     </T>
                     <T size={9.5} color={theme.muted} style={{ letterSpacing: track.label, textTransform: 'uppercase' }}>
                       {seller?.name || 'Beans user'}
@@ -104,7 +113,7 @@ export default function Results() {
                       {price.sub}
                     </T>
                     <T size={9.5} color={theme.muted} style={{ letterSpacing: track.label, textTransform: 'uppercase' }}>
-                      {shipsLine(l)}
+                      {shipsLine(l, lang)}
                     </T>
                   </View>
                 </Pressable>

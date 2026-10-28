@@ -6,14 +6,15 @@ import { Header } from '../../src/components/Header';
 import { Btn, Photo, Row, T } from '../../src/components/ui';
 import { useStore } from '../../src/store';
 import { space, theme, track } from '../../src/theme';
-import { SUPPLIER_LABEL } from '../../src/types';
-import { availableLine, minLine, packLine, priceLines, shipsLine } from '../../src/listing';
+import { supplierName, useLang } from '../../src/i18n';
+import { availableLine, minLine, packLine, priceLines, shippingLine, shipsLine } from '../../src/listing';
 
 export default function Chat() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { state, me, messagesOf, userById, postById, sendMessage } = useStore();
+  const { lang } = useLang();
   const scroller = useRef<ScrollView>(null);
   const [draft, setDraft] = useState('');
 
@@ -37,7 +38,7 @@ export default function Chat() {
       <Header
         back
         title={other?.name || 'Chat'}
-        subtitle={other?.supplierType ? SUPPLIER_LABEL[other.supplierType] : undefined}
+        subtitle={other?.supplierType ? supplierName(other.supplierType, lang) : undefined}
       />
 
       <ScrollView
@@ -72,20 +73,18 @@ export default function Chat() {
                   {l ? (
                     <>
                       <T size={13} weight="500" style={{ marginTop: 2 }}>
-                        {priceLines(l).main}
+                        {priceLines(l, lang).main}
                       </T>
                       <T size={10.5} color={theme.inkSoft}>
-                        {priceLines(l).sub}
+                        {priceLines(l, lang).sub}
                       </T>
-                      <T size={9.5} color={theme.muted} style={{ letterSpacing: track.label }}>
-                        {packLine(l) ?? availableLine(l)}
-                      </T>
-                      <T size={9.5} color={theme.muted} style={{ letterSpacing: track.label }}>
-                        {[minLine(l), shipsLine(l)].filter(Boolean).join(' · ')}
-                      </T>
-                      <T size={9.5} color={theme.muted} style={{ letterSpacing: track.label }}>
-                        {l.shippingIncluded ? 'SHIPPING INCLUDED' : 'SHIPPING NOT INCLUDED'}
-                      </T>
+                      {[packLine(l, lang) ?? availableLine(l, lang), minLine(l, lang), shipsLine(l, lang), shippingLine(l, lang)]
+                        .filter(Boolean)
+                        .map((text) => (
+                          <T key={text} size={9.5} color={theme.muted} style={{ letterSpacing: track.label }}>
+                            {text}
+                          </T>
+                        ))}
                     </>
                   ) : null}
                 </View>

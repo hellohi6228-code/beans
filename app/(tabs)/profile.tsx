@@ -7,7 +7,7 @@ import { PostTile } from '../../src/components/PostTile';
 import { Avatar, Btn, Empty, Row, Rule, Sub, T } from '../../src/components/ui';
 import { useStore } from '../../src/store';
 import { space, theme, track } from '../../src/theme';
-import { SUPPLIER_LABEL } from '../../src/types';
+import { supplierName, useLang } from '../../src/i18n';
 
 const W = Dimensions.get('window').width;
 const TILE = (W - space.lg * 2 - 4) / 3;
@@ -16,6 +16,7 @@ export default function Profile() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { me, postsOf } = useStore();
+  const { lang } = useLang();
   if (!me) return null;
 
   const posts = postsOf(me.id);
@@ -35,7 +36,7 @@ export default function Profile() {
               </T>
               {me.supplierType ? (
                 <T size={10} color={theme.muted} style={{ letterSpacing: track.label, textTransform: 'uppercase' }}>
-                  {SUPPLIER_LABEL[me.supplierType]}
+                  {supplierName(me.supplierType, lang)}
                 </T>
               ) : null}
             </View>

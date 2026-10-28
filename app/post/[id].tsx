@@ -10,6 +10,7 @@ import {
   allergenLine,
   availableLine,
   categoryLabel,
+  dutiesLine,
   minLine,
   packLine,
   priceLines,
@@ -17,7 +18,7 @@ import {
   shipsLine,
   trustLine,
 } from '../../src/listing';
-import { SUPPLIER_LABEL } from '../../src/types';
+import { cuisineName, supplierName, useLang } from '../../src/i18n';
 
 const W = Dimensions.get('window').width;
 
@@ -26,6 +27,7 @@ export default function PostDetail() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { postById, userById, messageAbout, removePost, toggleListing, addReport, reportedByMe, me } = useStore();
+  const { lang } = useLang();
 
   const [asking, setAsking] = useState(false);
 
@@ -61,26 +63,27 @@ export default function PostDetail() {
 
           {listing ? (
             <View style={{ marginTop: space.lg }}>
-              <Label>{categoryLabel(listing)}</Label>
+              <Label>{categoryLabel(listing, lang)}</Label>
 
               <Row style={{ gap: space.sm, alignItems: 'baseline', marginTop: space.sm }}>
                 <T size={19} weight="400">
-                  {priceLines(listing).main}
+                  {priceLines(listing, lang).main}
                 </T>
                 <T size={13} weight="300" color={theme.inkSoft}>
-                  {priceLines(listing).sub}
+                  {priceLines(listing, lang).sub}
                 </T>
               </Row>
 
               <View style={{ marginTop: space.md, gap: 4 }}>
                 {[
-                  packLine(listing),
-                  availableLine(listing),
-                  minLine(listing),
-                  shipsLine(listing),
-                  trustLine(listing),
-                  allergenLine(listing),
-                  shippingLine(listing),
+                  listing.cuisines.length ? listing.cuisines.map((c) => cuisineName(c, lang)).join(' · ') : null,
+                  packLine(listing, lang),
+                  availableLine(listing, lang),
+                  minLine(listing, lang),
+                  shipsLine(listing, lang),
+                  trustLine(listing, lang),
+                  allergenLine(listing, lang),
+                  shippingLine(listing, lang),
                 ]
                   .filter(Boolean)
                   .map((line) => (
@@ -91,7 +94,7 @@ export default function PostDetail() {
               </View>
 
               <T size={10} color={theme.muted} style={{ marginTop: space.md }}>
-                Price includes duties, fees and tax. 价格已含关税及所有费用。
+                {dutiesLine(lang)}
               </T>
 
               {mine ? (
@@ -136,7 +139,7 @@ export default function PostDetail() {
                 </T>
                 {author.supplierType ? (
                   <T size={10} color={theme.muted} style={{ letterSpacing: track.label, textTransform: 'uppercase' }}>
-                    {SUPPLIER_LABEL[author.supplierType]}
+                    {supplierName(author.supplierType, lang)}
                   </T>
                 ) : null}
               </View>

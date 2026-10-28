@@ -3,16 +3,20 @@ import React, { useState } from 'react';
 import { Alert, Image, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, TextInput, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Btn, Checkbox, Chip, Field, Label, Rule, Segmented, T } from '../../src/components/ui';
+import { LangPicker } from '../../src/components/LangPicker';
+import { categoryName, cuisineName, supplierName, useLang } from '../../src/i18n';
 import { useStore } from '../../src/store';
 import { space, theme, track } from '../../src/theme';
-import { CATEGORIES, CATEGORY_LABEL, Category, SUPPLIER_LABEL, SUPPLIER_TYPES } from '../../src/types';
+import { CATEGORIES, CUISINES, Category, Cuisine, SUPPLIER_TYPES } from '../../src/types';
 import { Unit, toKg, weightParts } from '../../src/units';
 
 export default function Home() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { state, setRequest, me, becomeSupplier, updateMe, startTutorial } = useStore();
+  const { lang } = useLang();
 
+  const [cuisine, setCuisine] = useState<Cuisine | 'all'>(state.request?.cuisine ?? 'all');
   const [category, setCategory] = useState<Category | 'all'>(state.request?.category ?? 'all');
   const [text, setText] = useState(state.request?.text ?? '');
   const [qty, setQty] = useState(state.request?.qty ? String(state.request.qty) : '');
@@ -34,6 +38,7 @@ export default function Home() {
     setRequest({
       text: text.trim(),
       category,
+      cuisine,
       qty: valid ? value : 0,
       unit,
       qtyKg,
@@ -53,7 +58,7 @@ export default function Home() {
         }}
         keyboardShouldPersistTaps="handled"
       >
-        <View style={{ alignItems: 'center', marginBottom: space.xl }}>
+        <View style={{ alignItems: 'center', marginBottom: space.lg }}>
           <Image
             source={require('../../assets/logo-mark.png')}
             resizeMode="contain"
@@ -61,22 +66,36 @@ export default function Home() {
           />
         </View>
 
+        <LangPicker />
+
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
-          style={{ marginHorizontal: -space.lg }}
+          style={{ marginHorizontal: -space.lg, marginTop: space.xl }}
           contentContainerStyle={{ gap: 6, paddingHorizontal: space.lg }}
         >
-          <Chip label="All" selected={category === 'all'} onPress={() => setCategory('all')} />
+          <Chip label="All kitchens" selected={cuisine === 'all'} onPress={() => setCuisine('all')} />
+          {CUISINES.map((c) => (
+            <Chip key={c} label={cuisineName(c, lang)} selected={cuisine === c} onPress={() => setCuisine(c)} />
+          ))}
+        </ScrollView>
+
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          style={{ marginHorizontal: -space.lg, marginTop: 6 }}
+          contentContainerStyle={{ gap: 6, paddingHorizontal: space.lg }}
+        >
+          <Chip label="All food" selected={category === 'all'} onPress={() => setCategory('all')} />
           {CATEGORIES.map((c) => (
-            <Chip key={c} label={CATEGORY_LABEL[c]} selected={category === c} onPress={() => setCategory(c)} />
+            <Chip key={c} label={categoryName(c, lang)} selected={category === c} onPress={() => setCategory(c)} />
           ))}
         </ScrollView>
 
         <Field
           value={text}
           onChangeText={setText}
-          placeholder="辣条, chili crisp, 乌龙…"
+          placeholder="Gochujang, 辣条, masa, nước mắm…"
           returnKeyType="search"
           onSubmitEditing={ready ? search : undefined}
           style={{ marginTop: space.lg }}
@@ -163,7 +182,7 @@ export default function Home() {
               {SUPPLIER_TYPES.map((t) => (
                 <Btn
                   key={t}
-                  title={SUPPLIER_LABEL[t]}
+                  title={supplierName(t, lang)}
                   kind="outline"
                   onPress={async () => {
                     await becomeSupplier(t);
