@@ -14,7 +14,6 @@ import {
   minLine,
   packLine,
   priceLines,
-  shippingLine,
   shipsLine,
   trustLine,
 } from '../../src/listing';
@@ -83,7 +82,6 @@ export default function PostDetail() {
                   shipsLine(listing, lang),
                   trustLine(listing, lang),
                   allergenLine(listing, lang),
-                  shippingLine(listing, lang),
                 ]
                   .filter(Boolean)
                   .map((line) => (

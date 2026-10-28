@@ -39,8 +39,6 @@ type Words = {
   englishLabel: string;
   contains: (list: string) => string;
   noAllergens: string;
-  shipping: string;
-  noShipping: string;
   duties: string;
 };
 
@@ -116,9 +114,7 @@ const EN: Words = {
   englishLabel: 'English label',
   contains: (list) => `Contains ${list.toLowerCase()}`,
   noAllergens: 'No major allergens',
-  shipping: 'Shipping included',
-  noShipping: 'Shipping not included',
-  duties: 'Price includes duties, fees and tax.',
+  duties: 'Price includes shipping, duties, fees and tax.',
 };
 
 const OTHER: Record<Exclude<Lang, 'en'>, Words> = {
@@ -194,9 +190,7 @@ const OTHER: Record<Exclude<Lang, 'en'>, Words> = {
     englishLabel: '英文标签',
     contains: (list) => `含${list}`,
     noAllergens: '不含主要过敏原',
-    shipping: '包邮',
-    noShipping: '不包邮',
-    duties: '价格已含关税及所有费用。',
+    duties: '价格已含运费、关税及所有费用。',
   },
   ko: {
     category: {
@@ -270,9 +264,7 @@ const OTHER: Record<Exclude<Lang, 'en'>, Words> = {
     englishLabel: '영문 라벨',
     contains: (list) => `함유: ${list}`,
     noAllergens: '주요 알레르기 유발 성분 없음',
-    shipping: '배송비 포함',
-    noShipping: '배송비 별도',
-    duties: '관세, 수수료, 세금이 포함된 가격입니다.',
+    duties: '배송비, 관세, 수수료, 세금이 포함된 가격입니다.',
   },
   ja: {
     category: {
@@ -346,9 +338,7 @@ const OTHER: Record<Exclude<Lang, 'en'>, Words> = {
     englishLabel: '英語ラベル',
     contains: (list) => `${list}を含む`,
     noAllergens: '主要アレルゲンなし',
-    shipping: '送料込み',
-    noShipping: '送料別',
-    duties: '関税・手数料・税込みの価格です。',
+    duties: '送料・関税・手数料・税込みの価格です。',
   },
   vi: {
     category: {
@@ -422,9 +412,7 @@ const OTHER: Record<Exclude<Lang, 'en'>, Words> = {
     englishLabel: 'Nhãn tiếng Anh',
     contains: (list) => `Có chứa ${list}`,
     noAllergens: 'Không chứa chất gây dị ứng chính',
-    shipping: 'Đã gồm phí vận chuyển',
-    noShipping: 'Chưa gồm phí vận chuyển',
-    duties: 'Giá đã gồm thuế nhập khẩu, phí và thuế.',
+    duties: 'Giá đã gồm phí vận chuyển, thuế nhập khẩu, phí và thuế.',
   },
   th: {
     category: {
@@ -498,9 +486,7 @@ const OTHER: Record<Exclude<Lang, 'en'>, Words> = {
     englishLabel: 'ฉลากภาษาอังกฤษ',
     contains: (list) => `มีส่วนผสมของ${list}`,
     noAllergens: 'ไม่มีสารก่อภูมิแพ้หลัก',
-    shipping: 'รวมค่าส่ง',
-    noShipping: 'ไม่รวมค่าส่ง',
-    duties: 'ราคารวมภาษีนำเข้า ค่าธรรมเนียม และภาษีแล้ว',
+    duties: 'ราคารวมค่าส่ง ภาษีนำเข้า ค่าธรรมเนียม และภาษีแล้ว',
   },
   es: {
     category: {
@@ -574,9 +560,7 @@ const OTHER: Record<Exclude<Lang, 'en'>, Words> = {
     englishLabel: 'Etiqueta en inglés',
     contains: (list) => `Contiene ${list}`,
     noAllergens: 'Sin alérgenos principales',
-    shipping: 'Envío incluido',
-    noShipping: 'Envío no incluido',
-    duties: 'El precio incluye aranceles, cargos e impuestos.',
+    duties: 'El precio incluye envío, aranceles, cargos e impuestos.',
   },
   it: {
     category: {
@@ -651,9 +635,7 @@ const OTHER: Record<Exclude<Lang, 'en'>, Words> = {
     englishLabel: 'Etichetta in inglese',
     contains: (list) => `Contiene ${list}`,
     noAllergens: 'Senza allergeni principali',
-    shipping: 'Spedizione inclusa',
-    noShipping: 'Spedizione esclusa',
-    duties: 'Il prezzo include dazi, commissioni e tasse.',
+    duties: 'Il prezzo include spedizione, dazi, commissioni e tasse.',
   },
 };
 

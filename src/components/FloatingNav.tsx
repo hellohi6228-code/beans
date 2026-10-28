@@ -80,6 +80,9 @@ export function FloatingNav() {
     router.navigate(href as never);
   };
 
+  // Nothing to navigate to until onboarding is done.
+  if (path === '/' || path === '/onboarding') return null;
+
   return (
     <>
       {open ? (

@@ -1,20 +1,20 @@
 import { useRouter } from 'expo-router';
 import React, { useState } from 'react';
-import { Alert, Image, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, TextInput, View } from 'react-native';
+import { Image, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, TextInput, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Btn, Checkbox, Chip, Field, Label, Rule, Segmented, T } from '../../src/components/ui';
+import { Btn, Chip, Field, Label, Segmented, T } from '../../src/components/ui';
 import { LangPicker } from '../../src/components/LangPicker';
-import { categoryName, cuisineName, supplierName, useLang } from '../../src/i18n';
+import { categoryName, cuisineName, useLang } from '../../src/i18n';
 import { INGREDIENTS, ingredientName } from '../../src/ingredients';
 import { useStore } from '../../src/store';
 import { space, theme, track } from '../../src/theme';
-import { CATEGORIES, CUISINES, Category, Cuisine, SUPPLIER_TYPES } from '../../src/types';
+import { CATEGORIES, CUISINES, Category, Cuisine } from '../../src/types';
 import { Unit, toKg, weightParts } from '../../src/units';
 
 export default function Home() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const { state, setRequest, me, becomeSupplier, updateMe, startTutorial } = useStore();
+  const { state, setRequest, me } = useStore();
   const { lang } = useLang();
 
   const [cuisine, setCuisine] = useState<Cuisine | 'all'>(state.request?.cuisine ?? 'all');
@@ -23,9 +23,6 @@ export default function Home() {
   const [text, setText] = useState(state.request?.text ?? '');
   const [qty, setQty] = useState(state.request?.qty ? String(state.request.qty) : '');
   const [unit, setUnit] = useState<Unit | 'case'>(state.request?.unit ?? 'kg');
-  const [shippingIncluded, setShippingIncluded] = useState(state.request?.shippingIncluded ?? false);
-  const [address, setAddress] = useState(state.request?.address ?? '');
-  const [picking, setPicking] = useState(false);
 
   if (!me) return null;
 
@@ -40,7 +37,7 @@ export default function Home() {
   const hasQty = qty.trim().length > 0;
   const valid = isFinite(value) && value > 0;
   const qtyKg = valid && unit !== 'case' ? toKg(value, unit) : 0;
-  const ready = (!hasQty || valid) && (!shippingIncluded || address.trim().length > 5);
+  const ready = !hasQty || valid;
 
   const search = () => {
     setRequest({
@@ -51,8 +48,6 @@ export default function Home() {
       qty: valid ? value : 0,
       unit,
       qtyKg,
-      shippingIncluded,
-      address: address.trim(),
     });
     router.push('/results');
   };
@@ -173,59 +168,7 @@ export default function Home() {
           </T>
         ) : null}
 
-        <View style={{ marginTop: space.xl, gap: space.lg }}>
-          <Checkbox
-            checked={shippingIncluded}
-            onToggle={() => setShippingIncluded((v) => !v)}
-            label="Shipping included"
-          />
-
-          {shippingIncluded ? (
-            <Field value={address} onChangeText={setAddress} placeholder="Shipping address" multiline />
-          ) : null}
-        </View>
-
         <Btn title="Find" onPress={search} disabled={!ready} style={{ marginTop: space.xl }} />
-
-        <View style={{ marginTop: space.xxl }}>
-          <Rule />
-          {me.role === 'supplier' ? (
-            <Btn
-              title="I'm not selling now"
-              kind="text"
-              onPress={() =>
-                Alert.alert('Stop selling?', 'Every listing you have will switch off. You can turn it back on any time.', [
-                  { text: 'Cancel', style: 'cancel' },
-                  {
-                    text: 'Yes',
-                    style: 'destructive',
-                    onPress: () => updateMe({ role: 'customer', supplierType: undefined }),
-                  },
-                ])
-              }
-              style={{ marginTop: space.lg }}
-            />
-          ) : picking ? (
-            <View style={{ paddingTop: space.lg, gap: space.md }}>
-              <Label>You are a</Label>
-              {SUPPLIER_TYPES.map((t) => (
-                <Btn
-                  key={t}
-                  title={supplierName(t, lang)}
-                  kind="outline"
-                  onPress={async () => {
-                    await becomeSupplier(t);
-                    setPicking(false);
-                    startTutorial();
-                  }}
-                />
-              ))}
-              <Btn title="Cancel" kind="text" onPress={() => setPicking(false)} />
-            </View>
-          ) : (
-            <Btn title="I sell too" kind="text" onPress={() => setPicking(true)} style={{ marginTop: space.lg }} />
-          )}
-        </View>
       </ScrollView>
     </KeyboardAvoidingView>
   );

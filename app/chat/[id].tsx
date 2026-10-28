@@ -7,7 +7,7 @@ import { Btn, Photo, Row, T } from '../../src/components/ui';
 import { useStore } from '../../src/store';
 import { space, theme, track } from '../../src/theme';
 import { supplierName, useLang } from '../../src/i18n';
-import { availableLine, minLine, packLine, priceLines, shippingLine, shipsLine } from '../../src/listing';
+import { availableLine, minLine, packLine, priceLines, shipsLine } from '../../src/listing';
 
 export default function Chat() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -78,7 +78,7 @@ export default function Chat() {
                       <T size={10.5} color={theme.inkSoft}>
                         {priceLines(l, lang).sub}
                       </T>
-                      {[packLine(l, lang) ?? availableLine(l, lang), minLine(l, lang), shipsLine(l, lang), shippingLine(l, lang)]
+                      {[packLine(l, lang) ?? availableLine(l, lang), minLine(l, lang), shipsLine(l, lang)]
                         .filter(Boolean)
                         .map((text) => (
                           <T key={text} size={9.5} color={theme.muted} style={{ letterSpacing: track.label }}>

@@ -146,8 +146,7 @@ export type ListingPart = {
   englishLabel: boolean;
   allergens: Allergen[];
 
-  shippingIncluded: boolean;
-  /** Switched off: no icon, no messaging. */
+  /** Switched off: no icon, no messaging. The price always includes shipping. */
   active: boolean;
 };
 

@@ -75,9 +75,6 @@ export function allergenLine(l: ListingPart, lang: Lang): string {
   return line(list(en), w ? list(w) : null);
 }
 
-export const shippingLine = (l: ListingPart, lang: Lang) =>
-  l.shippingIncluded ? line(en.shipping, words(lang)?.shipping) : line(en.noShipping, words(lang)?.noShipping);
-
 export const dutiesLine = (lang: Lang) => [en.duties, words(lang)?.duties].filter(Boolean).join(' ');
 
 export const categoryLabel = (l: ListingPart, lang: Lang) => categoryName(l.category, lang);

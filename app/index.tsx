@@ -6,7 +6,7 @@ import { useStore } from '../src/store';
 import { space, theme } from '../src/theme';
 
 export default function Index() {
-  const { hydrated, authError } = useStore();
+  const { hydrated, authError, myAddress } = useStore();
 
   if (authError) {
     return (
@@ -18,7 +18,7 @@ export default function Index() {
     );
   }
 
-  if (!hydrated) {
+  if (!hydrated || myAddress === undefined) {
     return (
       <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
         <ActivityIndicator color={theme.ink} />
@@ -26,5 +26,5 @@ export default function Index() {
     );
   }
 
-  return <Redirect href="/home" />;
+  return <Redirect href={myAddress === null ? '/onboarding' : '/home'} />;
 }

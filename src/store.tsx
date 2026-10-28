@@ -5,7 +5,7 @@ import { ensureSession, supabase } from './lib/supabase';
 import { Category, Cuisine, Message, Post, Report, SupplierType, Thread, User } from './types';
 import { Unit } from './units';
 
-/** What the front page asks. Everything but shipping is optional. */
+/** What the front page asks. All of it is optional. */
 export type SourcingRequest = {
   text: string;
   category: Category | 'all';
@@ -17,8 +17,6 @@ export type SourcingRequest = {
   unit: Unit | 'case';
   /** The amount in kg when asked by weight; 0 when asked in cases. */
   qtyKg: number;
-  shippingIncluded: boolean;
-  address: string;
 };
 
 type Cache = {
@@ -97,7 +95,6 @@ const postFromRow = (r: any): Post => ({
           fdaRegistered: !!r.fda_registered,
           englishLabel: !!r.english_label,
           allergens: r.allergens ?? [],
-          shippingIncluded: !!r.shipping_included,
           active: !!r.listing_active,
         }
       : undefined,
@@ -138,7 +135,11 @@ type Ctx = {
   me: User | null;
 
   updateMe: (patch: Partial<User>) => Promise<void>;
-  becomeSupplier: (type: SupplierType) => Promise<void>;
+  /** Your own shipping address. Undefined while loading, null until onboarded. */
+  myAddress: string | null | undefined;
+  /** Onboarding: buyer or seller, and where to ship. */
+  onboard: (input: { role: User['role']; supplierType?: SupplierType; address: string }) => Promise<void>;
+  saveAddress: (address: string) => Promise<void>;
 
   /** Testing only: other real backend identities remembered on this device. */
   demoAccounts: string[];
@@ -180,6 +181,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   const [cache, setCache] = useState<Cache>(emptyCache);
   const [demoAccounts, setDemoAccounts] = useState<string[]>([]);
   const [tutorial, setTutorial] = useState(false);
+  const [myAddress, setMyAddress] = useState<string | null | undefined>(undefined);
 
   // Establish (or restore) a session, then track whoever is signed in from
   // here on — switching a demo identity fires the same listener.
@@ -237,15 +239,19 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     channelsRef.current.forEach((c) => supabase.removeChannel(c));
     channelsRef.current = [];
     setCache(emptyCache);
+    setMyAddress(undefined);
 
     (async () => {
-      const [{ data: users }, { data: posts }, { data: threadRows }, { data: reportRows }] = await Promise.all([
-        supabase.from('profiles').select('*'),
-        supabase.from('posts').select('*'),
-        supabase.from('threads').select('*').contains('participants', [meId]),
-        supabase.from('reports').select('*').eq('reporter_id', meId),
-      ]);
+      const [{ data: users }, { data: posts }, { data: threadRows }, { data: reportRows }, { data: addressRow }] =
+        await Promise.all([
+          supabase.from('profiles').select('*'),
+          supabase.from('posts').select('*'),
+          supabase.from('threads').select('*').contains('participants', [meId]),
+          supabase.from('reports').select('*').eq('reporter_id', meId),
+          supabase.from('addresses').select('address').eq('user_id', meId).maybeSingle(),
+        ]);
       if (!alive) return;
+      setMyAddress(addressRow?.address ?? null);
 
       const threads = (threadRows ?? []).map(threadFromRow);
       const threadIds = threads.map((t) => t.id);
@@ -364,16 +370,36 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       setCache((c) => ({ ...c, users: upsert(c.users, userFromRow(data)) }));
     },
 
-    becomeSupplier: async (type) => {
+    myAddress,
+
+    saveAddress: async (address) => {
       if (!meId) return;
+      const clean = address.trim();
+      if (!clean) throw new Error('Add a shipping address.');
+      const { error } = await supabase
+        .from('addresses')
+        .upsert({ user_id: meId, address: clean, updated_at: new Date().toISOString() });
+      if (error) throw error;
+      setMyAddress(clean);
+    },
+
+    onboard: async ({ role, supplierType, address }) => {
+      if (!meId) return;
+      const clean = address.trim();
+      if (!clean) throw new Error('Add a shipping address.');
+      const { error: addressError } = await supabase
+        .from('addresses')
+        .upsert({ user_id: meId, address: clean, updated_at: new Date().toISOString() });
+      if (addressError) throw addressError;
       const { data, error } = await supabase
         .from('profiles')
-        .update({ role: 'supplier', supplier_type: type })
+        .update({ role, supplier_type: role === 'supplier' ? supplierType : null })
         .eq('id', meId)
         .select()
         .single();
       if (error) throw error;
       setCache((c) => ({ ...c, users: upsert(c.users, userFromRow(data)) }));
+      setMyAddress(clean);
     },
 
     addTestUser: async () => {
@@ -412,7 +438,8 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
         price_per_kg: l?.pricePerKg ?? null,
         lot_kg: l?.lotKg ?? null,
         entered_unit: l?.enteredUnit ?? null,
-        shipping_included: l?.shippingIncluded ?? null,
+        // Every listed price includes shipping.
+        shipping_included: l ? true : null,
         listing_active: l ? l.active : null,
         ...(l
           ? {

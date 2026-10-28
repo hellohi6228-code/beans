@@ -66,7 +66,6 @@ export default function NewPost() {
   const [fdaRegistered, setFdaRegistered] = useState(false);
   const [englishLabel, setEnglishLabel] = useState(false);
   const [allergens, setAllergens] = useState<Allergen[]>([]);
-  const [shippingIncluded, setShippingIncluded] = useState(false);
   const [busy, setBusy] = useState(false);
 
   // Unit sizes are small, so a kg seller types grams and a lb seller ounces.
@@ -122,7 +121,6 @@ export default function NewPost() {
               fdaRegistered,
               englishLabel,
               allergens,
-              shippingIncluded,
               active: true,
             }
           : undefined;
@@ -152,6 +150,8 @@ export default function NewPost() {
 
         <Field label="Caption" value={caption} onChangeText={setCaption} multiline />
 
+        {/* Only sellers list things; buyers just post. */}
+        {me?.role === 'supplier' ? (
         <View>
           <Rule />
           <View style={{ paddingTop: space.lg, gap: space.lg }}>
@@ -349,12 +349,6 @@ export default function NewPost() {
                   </View>
                 </View>
 
-                <Checkbox
-                  checked={shippingIncluded}
-                  onToggle={() => setShippingIncluded((v) => !v)}
-                  label="Shipping included"
-                />
-
                 <T size={11} color={theme.muted} style={{ lineHeight: 16 }}>
                   {dutiesLine(lang)}
                 </T>
@@ -362,6 +356,7 @@ export default function NewPost() {
             ) : null}
           </View>
         </View>
+        ) : null}
 
         <View style={{ gap: space.md }}>
           <Btn title="Post" onPress={submit} disabled={!ready} busy={busy} />

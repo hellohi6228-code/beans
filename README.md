@@ -25,7 +25,9 @@ publishable key). Two things need doing once, by whoever owns that project:
    case packs, minimum orders, ships-from and label facts to listings;
    `0003_case_check_nulls.sql` makes the database refuse a case listing with missing
    case details; `0004_global_kitchens.sql` adds fresh-food categories, the kitchens a
-   listing is for, and more countries to ship from. All are safe to re-run. If the
+   listing is for, and more countries to ship from; `0005_onboarding.sql` adds the
+   owner-only `addresses` table and makes every listing include shipping. All are
+   safe to re-run. If the
    `photos` bucket doesn't appear under Storage afterwards, create it by hand: New
    bucket → `photos` → Public.
 2. **Turn on anonymous sign-ins.** Authentication → Sign In / Providers → Anonymous.
@@ -38,18 +40,18 @@ Until both are done, the app boots to that message instead of the sourcing scree
 
 ## What it does
 
-- Opens straight into the app. No sign up, no sign out — one account per device,
-  backed by a real anonymous Supabase user.
+- No password — one account per device, backed by a real anonymous Supabase user.
+  The first launch onboards it once: buyer or seller (and what kind of seller), and a
+  shipping address that can't be left empty. Neither can be skipped; the address is
+  kept in its own table only its owner can read, and can be changed in Edit profile.
+  Buyer or seller is set there for good.
 - Front page: pick a language, a kitchen (Korean, Mexican & Latin…) and a kind of food,
-  search in any of eight languages, say how much in kg, lb or cases, and whether
-  shipping is included.
+  search in any of eight languages, and say how much in kg, lb or cases.
 - Every listing line shows in English and the reader's own language (中文, 한국어,
   日本語, Tiếng Việt, ไทย, Español, Italiano), picked once per device.
-- "I am also a supplier" turns the account into a farmer, bulk seller, online retail or
-  coffee shop, which unlocks listing. Turning it back off switches every listing off too;
-  the posts stay, so switching supplying back on leaves them all off until turned on again.
-- Everything is a post. A post can also be a listing — price, an amount, and whether
-  shipping is included — and gets an icon for it. Every weight and price shows in kg and lb.
+- Everything is a post. A seller's post can also be a listing — price and amount — and
+  gets an icon for it. Every listed price includes shipping, duties, fees and tax, and
+  every weight and price shows in kg and lb.
 - Instagram-style profile: picture, name, bio, grid of posts, all backed by real uploaded
   photos (`photos` storage bucket) rather than local files.
 - Messaging a post opens (or reuses) a conversation with its seller and drops the product

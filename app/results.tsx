@@ -46,7 +46,6 @@ export default function Results() {
       .filter((p) => p.listing?.active && p.userId !== me?.id)
       .filter((p) => req.category === 'all' || p.listing!.category === req.category)
       .filter((p) => req.cuisine === 'all' || p.listing!.cuisines.includes(req.cuisine))
-      .filter((p) => !req.shippingIncluded || p.listing!.shippingIncluded)
       .filter((p) => !usOnly || p.listing!.shipsFrom === 'us')
       .filter((p) => {
         if (!terms.length && !tagTerm) return true;
@@ -86,7 +85,7 @@ export default function Results() {
       <Header
         back
         title={what || 'Everything'}
-        subtitle={[amount, req.shippingIncluded ? 'Shipping included' : null].filter(Boolean).join(' · ') || undefined}
+        subtitle={amount ?? undefined}
       />
 
       <ScrollView contentContainerStyle={{ paddingHorizontal: space.lg, paddingBottom: insets.bottom + 120 }}>
