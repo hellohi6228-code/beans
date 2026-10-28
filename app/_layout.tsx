@@ -19,6 +19,9 @@ export default function RootLayout() {
             <Screen>
               <DemoBar />
               <Stack
+                // Each screen paints its own background, so the one underneath
+                // never shows through.
+                screenLayout={({ children }) => <Screen>{children}</Screen>}
                 screenOptions={{
                   headerShown: false,
                   contentStyle: { backgroundColor: 'transparent' },

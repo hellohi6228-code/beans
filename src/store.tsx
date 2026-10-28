@@ -10,6 +10,8 @@ export type SourcingRequest = {
   text: string;
   category: Category | 'all';
   cuisine: Cuisine | 'all';
+  /** One of that kitchen's ingredient tags, by its English name. */
+  ingredient?: string;
   /** 0 means any amount. */
   qty: number;
   unit: Unit | 'case';

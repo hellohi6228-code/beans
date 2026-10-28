@@ -61,6 +61,20 @@ Until both are done, the app boots to that message instead of the sourcing scree
 - A demo bar at the top switches between real backend identities on this device, so you can
   check that one account can find and message another's post without a second phone.
 
+## Ingredient tags
+
+Picking a kitchen on the front page shows the 17–23 ingredients that kitchen buys
+most, in [`src/ingredients.ts`](src/ingredients.ts). Each tag carries its name in
+English and Chinese, in the kitchen's own language where there is one (고추장,
+nước mắm, farina 00), and the spellings and brands people type (Maseca, Caputo,
+Red Boat). A tag matches a listing whole-word in any of those, however the seller
+wrote it. The lists were compiled from cooks' pantry guides and ethnic wholesalers'
+catalogues, among them The Woks of Life and Omnivore's Cookbook (Chinese), Just One
+Cookbook (Japanese), Korean Bapsang and Beyond Kimchee (Korean), Saveur (pho, Thai
+curry, Mexican pantry), Whisk Affair (Indian), Tasting Table and The Splendid Table
+(Filipino), A Cedar Spoon and Saveur (Middle Eastern), and Salon and Fine Dining
+Lovers (West African and Caribbean). Have a cook from each kitchen check its list.
+
 ## Layout
 
 ```

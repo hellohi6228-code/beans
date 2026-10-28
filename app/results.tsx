@@ -5,7 +5,8 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Header } from '../src/components/Header';
 import { Chip, Empty, Photo, Row, T } from '../src/components/ui';
 import { caseKg, priceLines, shipsLine } from '../src/listing';
-import { matches as matchesQuery, queryTerms, searchText } from '../src/search';
+import { findIngredient, ingredientName } from '../src/ingredients';
+import { ingredientTerm, matchesTag, matches as matchesQuery, queryTerms, searchText } from '../src/search';
 import { SourcingRequest, useStore } from '../src/store';
 import { space, theme, track } from '../src/theme';
 import { categoryName, cuisineName, useLang } from '../src/i18n';
@@ -38,7 +39,9 @@ export default function Results() {
 
   const matches = useMemo(() => {
     if (!req) return [];
+    const tag = req.cuisine !== 'all' && req.ingredient ? findIngredient(req.cuisine, req.ingredient) : undefined;
     const terms = queryTerms(req.text);
+    const tagTerm = tag ? ingredientTerm(tag) : null;
     return state.posts
       .filter((p) => p.listing?.active && p.userId !== me?.id)
       .filter((p) => req.category === 'all' || p.listing!.category === req.category)
@@ -46,8 +49,9 @@ export default function Results() {
       .filter((p) => !req.shippingIncluded || p.listing!.shippingIncluded)
       .filter((p) => !usOnly || p.listing!.shipsFrom === 'us')
       .filter((p) => {
-        if (!terms.length) return true;
-        return matchesQuery(terms, searchText(p.caption, p.listing!));
+        if (!terms.length && !tagTerm) return true;
+        const hay = searchText(p.caption, p.listing!);
+        return matchesQuery(terms, hay) && (!tagTerm || matchesTag(tagTerm, hay));
       })
       .filter((p) => fits(p, req))
       .sort((a, b) => a.listing!.pricePerKg - b.listing!.pricePerKg);
@@ -62,8 +66,10 @@ export default function Results() {
     );
   }
 
+  const tagged = req.cuisine !== 'all' && req.ingredient ? findIngredient(req.cuisine, req.ingredient) : undefined;
   const what = [
     req.text,
+    tagged ? ingredientName(tagged, lang) : null,
     req.cuisine === 'all' ? null : cuisineName(req.cuisine, lang),
     req.category === 'all' ? null : categoryName(req.category, lang),
   ]

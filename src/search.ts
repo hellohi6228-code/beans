@@ -1,5 +1,17 @@
 import { allNames } from './i18n';
-import { ListingPart } from './types';
+import { INGREDIENTS, Ingredient, namesOf } from './ingredients';
+import { CUISINES, ListingPart } from './types';
+
+// Chinese, Japanese, Korean and Thai run words together, so a word from
+// those is found anywhere inside a query or caption. Everything else must
+// match as a whole word, so "res" never matches inside "fresh".
+const RUN_TOGETHER = /[฀-๿぀-ヿ㐀-鿿가-힯]/;
+
+// A single Korean or Thai syllable (김, 떡) turns up inside too many other
+// words to be matched on its own.
+function searchable(w: string) {
+  return !(w.length === 1 && /[฀-๿가-힯]/.test(w));
+}
 
 // Words that mean the same ingredient in the languages restaurant owners
 // order in. Taken from how 1688, Taobao, Weee! and US ethnic wholesalers
@@ -112,12 +124,14 @@ const GROUPS: string[][] = [
   ['boba', 'tapioca pearls', '珍珠', 'タピオカ', '버블티', 'trân châu', 'ไข่มุก'],
   ['chips', 'crisps', '薯片', '감자칩', 'ポテトチップス', 'papas fritas', 'patatine'],
   ['snack', '零食', '과자', 'お菓子', 'スナック', 'đồ ăn vặt', 'ขนม', 'botana', 'botanas'],
-].map((g) => g.map((w) => w.toLowerCase()));
+  // Plus every kitchen's ingredient tags, each with all its names.
+  ...CUISINES.flatMap((c) => INGREDIENTS[c].map(namesOf)),
+]
+  .map((g) => g.map((w) => w.toLowerCase()).filter(searchable))
+  .filter((g) => g.length > 0);
 
-// Chinese, Japanese, Korean and Thai run words together, so a word from
-// those is found anywhere inside a query or caption. Everything else must
-// match as a whole word, so "res" never matches inside "fresh".
-const RUN_TOGETHER = /[฀-๿぀-ヿ㐀-鿿가-힯]/;
+/** The words an ingredient tag matches. */
+export const ingredientTerm = (i: Ingredient) => namesOf(i).map((w) => w.toLowerCase()).filter(searchable);
 
 const escape = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 // Latin letters including Vietnamese and Spanish accents. Spelled out rather
@@ -164,4 +178,8 @@ export function searchText(caption: string, l: ListingPart): string {
   return [base, ...synonyms, ...names].join(' | ');
 }
 
+/** Typed words match inside longer ones, so "chick" finds chicken. */
 export const matches = (terms: string[][], hay: string) => terms.every((alts) => alts.some((a) => hay.includes(a)));
+
+/** A picked tag matches whole words only, so Masa harina never finds garam masala. */
+export const matchesTag = (term: string[], hay: string) => term.some((a) => has(hay, a));
