@@ -1,15 +1,16 @@
-export type SupplierType = 'farmer' | 'manufacturer' | 'importer' | 'bulk' | 'online_retail' | 'coffee_shop';
+export type SupplierType =
+  | 'farmer'
+  | 'manufacturer'
+  | 'exporter'
+  | 'importer'
+  | 'bulk'
+  | 'online_retail'
+  | 'coffee_shop';
 
 export type Role = 'customer' | 'supplier';
 
-export const SUPPLIER_TYPES: SupplierType[] = [
-  'farmer',
-  'manufacturer',
-  'importer',
-  'bulk',
-  'online_retail',
-  'coffee_shop',
-];
+/** What a new seller can pick: the businesses that move food into the US. */
+export const SUPPLIER_TYPES: SupplierType[] = ['manufacturer', 'exporter', 'importer', 'farmer', 'bulk'];
 
 /** What a listing is. Ordered roughly by how much of it a restaurant buys. */
 export type Category =
@@ -78,7 +79,15 @@ export type Origin =
   | 'philippines'
   | 'india'
   | 'mexico'
+  | 'peru'
   | 'italy'
+  | 'greece'
+  | 'turkey'
+  | 'lebanon'
+  | 'nigeria'
+  | 'ghana'
+  | 'ethiopia'
+  | 'jamaica'
   | 'other';
 
 export const ORIGINS: Origin[] = [
@@ -91,7 +100,15 @@ export const ORIGINS: Origin[] = [
   'philippines',
   'india',
   'mexico',
+  'peru',
   'italy',
+  'greece',
+  'turkey',
+  'lebanon',
+  'nigeria',
+  'ghana',
+  'ethiopia',
+  'jamaica',
   'other',
 ];
 
@@ -105,8 +122,20 @@ export type User = {
   name: string;
   bio: string;
   supplierType?: SupplierType;
+  /** Sellers only: where their goods ship from. */
+  shipsFrom?: 'us' | Origin;
   avatar?: string;
   createdAt: number;
+};
+
+/** A seller on camera right now. */
+export type Live = {
+  id: string;
+  sellerId: string;
+  title: string;
+  startedAt: number;
+  lastSeen: number;
+  endedAt?: number;
 };
 
 /**
@@ -116,7 +145,10 @@ export type User = {
  * shown in kg and lb.
  */
 export type ListingPart = {
-  category: Category;
+  /** Older listings only; new ones are described by their ingredient tags. */
+  category?: Category;
+  /** Tags like 'korean.jang.gochujang' — see src/tags.ts. */
+  ingredients: string[];
   sellBy: 'weight' | 'case';
 
   /** Per-kg price. For a case listing, derived from the case price. */

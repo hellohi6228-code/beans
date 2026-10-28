@@ -3,19 +3,21 @@ import { useEffect } from 'react';
 import { useStore } from '../store';
 
 /**
- * Keeps an account without a shipping address on the onboarding screen,
- * whatever link it came in on, and sends a finished one off it.
+ * Keeps an account that hasn't onboarded on the onboarding screen, whatever
+ * link it came in on, and sends a finished one off it.
  */
 export function OnboardingGate() {
-  const { hydrated, me, myAddress } = useStore();
+  const { me, onboarded } = useStore();
   const path = usePathname();
   const router = useRouter();
 
   useEffect(() => {
-    if (!hydrated || !me || myAddress === undefined || path === '/') return;
-    if (myAddress === null && path !== '/onboarding') router.replace('/onboarding');
-    if (myAddress !== null && path === '/onboarding') router.replace('/home');
-  }, [hydrated, me, myAddress, path, router]);
+    if (onboarded === undefined || path === '/') return;
+    if (!onboarded && path !== '/onboarding') router.replace('/onboarding');
+    if (onboarded && path === '/onboarding') router.replace(me?.role === 'supplier' ? '/live' : '/home');
+    // Find is for buyers; a seller's front page is Live.
+    if (onboarded && me?.role === 'supplier' && path === '/home') router.replace('/live');
+  }, [me, onboarded, path, router]);
 
   return null;
 }

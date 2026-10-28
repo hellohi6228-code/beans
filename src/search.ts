@@ -1,6 +1,6 @@
 import { allNames } from './i18n';
-import { INGREDIENTS, Ingredient, namesOf } from './ingredients';
-import { CUISINES, ListingPart } from './types';
+import { ALL_ITEMS, namesOf, tagById } from './tags';
+import { ListingPart } from './types';
 
 // Chinese, Japanese, Korean and Thai run words together, so a word from
 // those is found anywhere inside a query or caption. Everything else must
@@ -124,14 +124,12 @@ const GROUPS: string[][] = [
   ['boba', 'tapioca pearls', '珍珠', 'タピオカ', '버블티', 'trân châu', 'ไข่มุก'],
   ['chips', 'crisps', '薯片', '감자칩', 'ポテトチップス', 'papas fritas', 'patatine'],
   ['snack', '零食', '과자', 'お菓子', 'スナック', 'đồ ăn vặt', 'ขนม', 'botana', 'botanas'],
-  // Plus every kitchen's ingredient tags, each with all its names.
-  ...CUISINES.flatMap((c) => INGREDIENTS[c].map(namesOf)),
+  // Plus every ingredient tag, each with all its names.
+  ...ALL_ITEMS.map(namesOf),
 ]
   .map((g) => g.map((w) => w.toLowerCase()).filter(searchable))
   .filter((g) => g.length > 0);
 
-/** The words an ingredient tag matches. */
-export const ingredientTerm = (i: Ingredient) => namesOf(i).map((w) => w.toLowerCase()).filter(searchable);
 
 const escape = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 // Latin letters including Vietnamese and Spanish accents. Spelled out rather
@@ -166,12 +164,16 @@ export function queryTerms(text: string): string[][] {
   return out;
 }
 
-/** What a listing is searched by: its caption, plus its category, cuisines and origin in every language. */
+/** What a listing is searched by: its caption, plus its tags, cuisines and origin in every language. */
 export function searchText(caption: string, l: ListingPart): string {
   const base = caption.toLowerCase();
   const synonyms = GROUPS.filter((g) => g.some((w) => has(base, w))).flat();
   const names = [
-    ...allNames.category(l.category),
+    ...(l.category ? allNames.category(l.category) : []),
+    ...l.ingredients.flatMap((id) => {
+      const t = tagById(id);
+      return t ? namesOf(t) : [];
+    }),
     ...l.cuisines.flatMap(allNames.cuisine),
     ...(l.shipsFrom === 'us' ? [] : allNames.origin(l.shipsFrom)),
   ].map((s) => s.toLowerCase());
@@ -181,5 +183,3 @@ export function searchText(caption: string, l: ListingPart): string {
 /** Typed words match inside longer ones, so "chick" finds chicken. */
 export const matches = (terms: string[][], hay: string) => terms.every((alts) => alts.some((a) => hay.includes(a)));
 
-/** A picked tag matches whole words only, so Masa harina never finds garam masala. */
-export const matchesTag = (term: string[], hay: string) => term.some((a) => has(hay, a));

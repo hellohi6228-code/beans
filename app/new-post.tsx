@@ -7,19 +7,11 @@ import { Btn, Checkbox, Chip, Field, Label, Row, Rule, Segmented, T } from '../s
 import { uploadPhotos } from '../src/lib/supabase';
 import { useStore } from '../src/store';
 import { space, theme, track } from '../src/theme';
-import { allergenName, categoryName, cuisineName, en, originName, pair, useLang, words } from '../src/i18n';
+import { TagTree } from '../src/components/TagTree';
+import { allergenName, en, originName, pair, useLang, words } from '../src/i18n';
 import { dutiesLine } from '../src/listing';
-import {
-  ALLERGENS,
-  Allergen,
-  CATEGORIES,
-  CUISINES,
-  Category,
-  Cuisine,
-  ListingPart,
-  ORIGINS,
-  Origin,
-} from '../src/types';
+import { cuisinesOf } from '../src/tags';
+import { ALLERGENS, Allergen, ListingPart, ORIGINS, Origin } from '../src/types';
 import {
   KG_PER_LB,
   Unit,
@@ -45,23 +37,23 @@ export default function NewPost() {
   const [photos, setPhotos] = useState<string[]>([]);
   const [caption, setCaption] = useState('');
 
-  const [selling, setSelling] = useState(false);
-  const [category, setCategory] = useState<Category | null>(null);
-  const [cuisines, setCuisines] = useState<Cuisine[]>([]);
+  // A seller's post is a listing unless they untick it.
+  const [selling, setSelling] = useState(me?.role === 'supplier');
+  const [tags, setTags] = useState<Set<string>>(new Set());
   const [sellBy, setSellBy] = useState<'weight' | 'case'>('weight');
   const [unit, setUnit] = useState<Unit>('kg');
 
   // By weight
   const [price, setPrice] = useState('');
   const [amount, setAmount] = useState('');
-  // By the case
+  // By the box
   const [casePrice, setCasePrice] = useState('');
   const [perCase, setPerCase] = useState('');
   const [unitSize, setUnitSize] = useState('');
   const [cases, setCases] = useState('');
 
   const [minOrder, setMinOrder] = useState('');
-  const [shipsFrom, setShipsFrom] = useState<'us' | Origin>('us');
+  const [shipsFrom, setShipsFrom] = useState<'us' | Origin>(me?.shipsFrom ?? 'us');
   const [leadDays, setLeadDays] = useState('');
   const [fdaRegistered, setFdaRegistered] = useState(false);
   const [englishLabel, setEnglishLabel] = useState(false);
@@ -86,7 +78,7 @@ export default function NewPost() {
   const minOrderValue = sellBy === 'case' ? Math.round(n(minOrder)) : toKg(n(minOrder), unit);
 
   const listingReady =
-    !!category &&
+    tags.size > 0 &&
     pricePerKg > 0 &&
     lotKg > 0 &&
     (sellBy === 'weight' || (n(casePrice) > 0 && unitsPerCase > 0 && unitKg > 0 && casesAvailable > 0)) &&
@@ -96,17 +88,22 @@ export default function NewPost() {
 
   const toggleAllergen = (a: Allergen) =>
     setAllergens((list) => (list.includes(a) ? list.filter((x) => x !== a) : [...list, a]));
-  const toggleCuisine = (c: Cuisine) =>
-    setCuisines((list) => (list.includes(c) ? list.filter((x) => x !== c) : [...list, c]));
+  const toggleTag = (id: string) =>
+    setTags((cur) => {
+      const next = new Set(cur);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
 
   const submit = async () => {
     if (!me) return;
     setBusy(true);
     try {
       const listing: ListingPart | undefined =
-        selling && category
+        selling && tags.size
           ? {
-              category,
+              ingredients: [...tags],
               sellBy,
               pricePerKg,
               lotKg,
@@ -115,7 +112,7 @@ export default function NewPost() {
                 ? { pricePerCase: n(casePrice), unitsPerCase, unitKg, casesAvailable }
                 : {}),
               minOrder: minOrderValue,
-              cuisines,
+              cuisines: cuisinesOf([...tags]),
               shipsFrom,
               leadDays: shipsFrom !== 'us' ? Math.round(n(leadDays)) : undefined,
               fdaRegistered,
@@ -160,26 +157,11 @@ export default function NewPost() {
             {selling ? (
               <>
                 <View style={{ gap: space.sm }}>
-                  <Label>Category</Label>
-                  <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>
-                    {CATEGORIES.map((c) => (
-                      <Chip key={c} label={categoryName(c, lang)} selected={category === c} onPress={() => setCategory(c)} />
-                    ))}
-                  </View>
-                </View>
-
-                <View style={{ gap: space.sm }}>
-                  <Label>For kitchens</Label>
-                  <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>
-                    {CUISINES.map((c) => (
-                      <Chip
-                        key={c}
-                        label={cuisineName(c, lang)}
-                        selected={cuisines.includes(c)}
-                        onPress={() => toggleCuisine(c)}
-                      />
-                    ))}
-                  </View>
+                  <Label>What it is{tags.size ? ` · ${tags.size}` : ''}</Label>
+                  <T size={11} color={theme.muted} style={{ lineHeight: 16 }}>
+                    Open a cuisine, then an ingredient, and tick what you sell. Buyers who tick the same find you.
+                  </T>
+                  <TagTree selected={tags} onToggle={toggleTag} itemsOnly />
                 </View>
 
                 <View style={{ gap: space.sm }}>
@@ -189,7 +171,7 @@ export default function NewPost() {
                     onChange={setSellBy}
                     options={[
                       { value: 'weight', label: 'Weight' },
-                      { value: 'case', label: 'Case' },
+                      { value: 'case', label: 'Box' },
                     ]}
                   />
                 </View>
@@ -210,7 +192,7 @@ export default function NewPost() {
                   <>
                     <Row style={{ gap: space.lg, alignItems: 'flex-start' }}>
                       <Field
-                        label={`Price per ${unit}`}
+                        label={`Price per ${unit} (USD)`}
                         value={price}
                         onChangeText={setPrice}
                         keyboardType="decimal-pad"
@@ -238,7 +220,7 @@ export default function NewPost() {
                   <>
                     <Row style={{ gap: space.lg, alignItems: 'flex-start' }}>
                       <Field
-                        label="Units per case"
+                        label="Units per box"
                         value={perCase}
                         onChangeText={setPerCase}
                         keyboardType="number-pad"
@@ -256,7 +238,7 @@ export default function NewPost() {
                     </Row>
                     <Row style={{ gap: space.lg, alignItems: 'flex-start' }}>
                       <Field
-                        label="Price per case"
+                        label="Price per box (USD)"
                         value={casePrice}
                         onChangeText={setCasePrice}
                         keyboardType="decimal-pad"
@@ -264,7 +246,7 @@ export default function NewPost() {
                         style={{ flex: 1 }}
                       />
                       <Field
-                        label="Cases in stock"
+                        label="Boxes in stock"
                         value={cases}
                         onChangeText={setCases}
                         keyboardType="number-pad"
@@ -273,7 +255,7 @@ export default function NewPost() {
                       />
                     </Row>
                     <Field
-                      label="Min order (cases)"
+                      label="Min order (boxes)"
                       value={minOrder}
                       onChangeText={setMinOrder}
                       keyboardType="number-pad"
@@ -287,7 +269,7 @@ export default function NewPost() {
                     {sellBy === 'case' && unitsPerCase > 0 && unitKg > 0 ? (
                       <T size={10} color={theme.muted} style={{ letterSpacing: track.label }}>
                         {unitsPerCase} × {smallWeightParts(unitKg).g} / {smallWeightParts(unitKg).oz} ·{' '}
-                        {weightParts(oneCaseKg).kg} / {weightParts(oneCaseKg).lb} a case
+                        {weightParts(oneCaseKg).kg} / {weightParts(oneCaseKg).lb} a box
                       </T>
                     ) : null}
                     {pricePerKg > 0 ? (
@@ -320,7 +302,7 @@ export default function NewPost() {
 
                 {shipsFrom !== 'us' ? (
                   <Field
-                    label="Lead time (days)"
+                    label="Days to reach a US buyer"
                     value={leadDays}
                     onChangeText={setLeadDays}
                     keyboardType="number-pad"

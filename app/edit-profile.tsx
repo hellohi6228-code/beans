@@ -3,12 +3,12 @@ import React, { useCallback, useState } from 'react';
 import { Alert, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { Header } from '../src/components/Header';
 import { PhotoPicker } from '../src/components/PhotoPicker';
-import { Btn, Field, Label, T } from '../src/components/ui';
+import { Btn, Chip, Field, Label, T } from '../src/components/ui';
 import { uploadPhoto } from '../src/lib/supabase';
 import { useStore } from '../src/store';
 import { space, theme, track } from '../src/theme';
-import { supplierName, useLang } from '../src/i18n';
-import { SUPPLIER_TYPES, SupplierType } from '../src/types';
+import { originName, pair, supplierName, useLang, words } from '../src/i18n';
+import { ORIGINS, Origin, SUPPLIER_TYPES, SupplierType } from '../src/types';
 
 export default function EditProfile() {
   const router = useRouter();
@@ -20,6 +20,7 @@ export default function EditProfile() {
   const [avatar, setAvatar] = useState<string[]>(me?.avatar ? [me.avatar] : []);
   const [address, setAddress] = useState(myAddress ?? '');
   const [supplierType, setSupplierType] = useState<SupplierType | undefined>(me?.supplierType);
+  const [shipsFrom, setShipsFrom] = useState<'us' | Origin | undefined>(me?.shipsFrom);
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState(false);
 
@@ -31,27 +32,29 @@ export default function EditProfile() {
       setAvatar(me?.avatar ? [me.avatar] : []);
       setAddress(myAddress ?? '');
       setSupplierType(me?.supplierType);
+      setShipsFrom(me?.shipsFrom);
       setOpen(false);
-    }, [me?.id, me?.name, me?.bio, me?.avatar, me?.supplierType, myAddress])
+    }, [me?.id, me?.name, me?.bio, me?.avatar, me?.supplierType, me?.shipsFrom, myAddress])
   );
 
   if (!me) return null;
 
-  // Buyer or seller is set once, at onboarding. A seller can still change what kind.
+  // Buyer or seller is set once, at onboarding. A buyer keeps a shipping
+  // address; a seller says what kind of business and where goods ship from.
   const seller = me.role === 'supplier';
-  const ready = address.trim().length > 0;
+  const ready = seller ? !!supplierType && !!shipsFrom : address.trim().length > 0;
 
   const save = async () => {
     if (!me) return;
     setBusy(true);
     try {
       const avatarUrl = avatar[0] ? await uploadPhoto(avatar[0], me.id) : undefined;
-      await saveAddress(address);
+      if (!seller) await saveAddress(address);
       await updateMe({
         name: name.trim(),
         bio,
         avatar: avatarUrl,
-        ...(seller ? { supplierType } : {}),
+        ...(seller ? { supplierType, shipsFrom } : {}),
       });
       router.back();
     } catch (err: any) {
@@ -75,17 +78,33 @@ export default function EditProfile() {
 
         <Field label="Bio" value={bio} onChangeText={setBio} multiline placeholder="Anything you like" />
 
-        <Field
-          label="Shipping address"
-          value={address}
-          onChangeText={setAddress}
-          placeholder="Street, city, state, ZIP"
-          multiline
-        />
+        {!seller ? (
+          <Field
+            label="Shipping address"
+            value={address}
+            onChangeText={setAddress}
+            placeholder="Street, city, state, ZIP"
+            multiline
+          />
+        ) : (
+          <View style={{ gap: space.sm }}>
+            <Label>Ships from</Label>
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>
+              {ORIGINS.map((o) => (
+                <Chip key={o} label={originName(o, lang)} selected={shipsFrom === o} onPress={() => setShipsFrom(o)} />
+              ))}
+              <Chip
+                label={pair('US warehouse', words(lang)?.usStock)}
+                selected={shipsFrom === 'us'}
+                onPress={() => setShipsFrom('us')}
+              />
+            </View>
+          </View>
+        )}
 
         {seller ? (
           <View style={{ gap: space.sm }}>
-            <Label>Supplying</Label>
+            <Label>Business</Label>
             <Pressable
               onPress={() => setOpen((v) => !v)}
               style={{

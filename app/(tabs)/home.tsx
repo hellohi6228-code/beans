@@ -1,174 +1,188 @@
 import { useRouter } from 'expo-router';
-import React, { useState } from 'react';
-import { Image, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, TextInput, View } from 'react-native';
+import React, { useMemo, useState } from 'react';
+import { Image, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Btn, Chip, Field, Label, Segmented, T } from '../../src/components/ui';
 import { LangPicker } from '../../src/components/LangPicker';
-import { categoryName, cuisineName, useLang } from '../../src/i18n';
-import { INGREDIENTS, ingredientName } from '../../src/ingredients';
+import { ListingGrid } from '../../src/components/ListingGrid';
+import { TagTree } from '../../src/components/TagTree';
+import { Chip, Field, Label, Row, Segmented, T } from '../../src/components/ui';
+import { caseKg } from '../../src/listing';
+import { matches, queryTerms, searchText } from '../../src/search';
 import { useStore } from '../../src/store';
+import { tagsMatch } from '../../src/tags';
 import { space, theme, track } from '../../src/theme';
-import { CATEGORIES, CUISINES, Category, Cuisine } from '../../src/types';
+import { Post } from '../../src/types';
 import { Unit, toKg, weightParts } from '../../src/units';
 
+type AmountUnit = Unit | 'case';
+
+/** Whether a listing can fill the amount asked for — enough stock, and not under its minimum. */
+function fits(p: Post, qty: number, unit: AmountUnit) {
+  const l = p.listing!;
+  if (!qty) return true;
+  if (unit === 'case') {
+    return l.sellBy === 'case' && (l.casesAvailable ?? 0) >= qty && l.minOrder <= qty;
+  }
+  const qtyKg = toKg(qty, unit);
+  const minKg = l.sellBy === 'case' ? l.minOrder * caseKg(l) : l.minOrder;
+  return l.lotKg >= qtyKg && minKg <= qtyKg;
+}
+
+/** Buyers' front page: pick what you need and the listings show up underneath. */
 export default function Home() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const { state, setRequest, me } = useStore();
-  const { lang } = useLang();
+  const { state, me, livesNow, userById } = useStore();
 
-  const [cuisine, setCuisine] = useState<Cuisine | 'all'>(state.request?.cuisine ?? 'all');
-  const [ingredient, setIngredient] = useState<string | undefined>(state.request?.ingredient);
-  const [category, setCategory] = useState<Category | 'all'>(state.request?.category ?? 'all');
-  const [text, setText] = useState(state.request?.text ?? '');
-  const [qty, setQty] = useState(state.request?.qty ? String(state.request.qty) : '');
-  const [unit, setUnit] = useState<Unit | 'case'>(state.request?.unit ?? 'kg');
+  const [picked, setPicked] = useState<Set<string>>(new Set());
+  const [text, setText] = useState('');
+  const [amountOpen, setAmountOpen] = useState(false);
+  const [qty, setQty] = useState('');
+  const [unit, setUnit] = useState<AmountUnit>('kg');
+  const [usOnly, setUsOnly] = useState(false);
+
+  const value = parseFloat(qty.replace(',', '.'));
+  const amount = amountOpen && isFinite(value) && value > 0 ? value : 0;
+
+  const toggle = (id: string) =>
+    setPicked((cur) => {
+      const next = new Set(cur);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+
+  const shown = useMemo(() => {
+    const terms = queryTerms(text);
+    return state.posts
+      .filter((p) => p.listing?.active && p.userId !== me?.id)
+      .filter((p) => tagsMatch(picked, p.listing!.ingredients, p.listing!.cuisines))
+      .filter((p) => !usOnly || p.listing!.shipsFrom === 'us')
+      .filter((p) => !terms.length || matches(terms, searchText(p.caption, p.listing!)))
+      .filter((p) => fits(p, amount, unit))
+      .sort((a, b) => a.listing!.pricePerKg - b.listing!.pricePerKg);
+  }, [state.posts, me, picked, usOnly, text, amount, unit]);
 
   if (!me) return null;
-
-  // A tag belongs to one kitchen, so changing kitchen clears it.
-  const pickCuisine = (c: Cuisine | 'all') => {
-    setCuisine(c);
-    setIngredient(undefined);
-  };
-
-  // The amount is optional: blank browses everything.
-  const value = parseFloat(qty.replace(',', '.'));
-  const hasQty = qty.trim().length > 0;
-  const valid = isFinite(value) && value > 0;
-  const qtyKg = valid && unit !== 'case' ? toKg(value, unit) : 0;
-  const ready = !hasQty || valid;
-
-  const search = () => {
-    setRequest({
-      text: text.trim(),
-      category,
-      cuisine,
-      ingredient: cuisine === 'all' ? undefined : ingredient,
-      qty: valid ? value : 0,
-      unit,
-      qtyKg,
-    });
-    router.push('/results');
-  };
 
   return (
     <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
       <ScrollView
-        contentContainerStyle={{
-          paddingTop: space.xxl,
-          paddingHorizontal: space.lg,
-          paddingBottom: insets.bottom + 120,
-        }}
+        contentContainerStyle={{ paddingTop: space.xl, paddingHorizontal: space.lg, paddingBottom: insets.bottom + 120 }}
         keyboardShouldPersistTaps="handled"
       >
         <View style={{ alignItems: 'center', marginBottom: space.lg }}>
-          <Image
-            source={require('../../assets/logo-mark.png')}
-            resizeMode="contain"
-            style={{ width: 132, height: 132 }}
-          />
+          <Image source={require('../../assets/logo-mark.png')} resizeMode="contain" style={{ width: 96, height: 96 }} />
         </View>
 
         <LangPicker />
 
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          style={{ marginHorizontal: -space.lg, marginTop: space.xl }}
-          contentContainerStyle={{ gap: 6, paddingHorizontal: space.lg }}
-        >
-          <Chip label="All kitchens" selected={cuisine === 'all'} onPress={() => pickCuisine('all')} />
-          {CUISINES.map((c) => (
-            <Chip key={c} label={cuisineName(c, lang)} selected={cuisine === c} onPress={() => pickCuisine(c)} />
-          ))}
-        </ScrollView>
-
-        {cuisine !== 'all' ? (
-          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: space.md }}>
-            {INGREDIENTS[cuisine].map((i) => (
-              <Chip
-                key={i.en}
-                label={ingredientName(i, lang)}
-                selected={ingredient === i.en}
-                onPress={() => setIngredient((cur) => (cur === i.en ? undefined : i.en))}
-              />
-            ))}
-          </View>
-        ) : null}
-
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          style={{ marginHorizontal: -space.lg, marginTop: 6 }}
-          contentContainerStyle={{ gap: 6, paddingHorizontal: space.lg }}
-        >
-          <Chip label="All food" selected={category === 'all'} onPress={() => setCategory('all')} />
-          {CATEGORIES.map((c) => (
-            <Chip key={c} label={categoryName(c, lang)} selected={category === c} onPress={() => setCategory(c)} />
-          ))}
-        </ScrollView>
-
         <Field
           value={text}
           onChangeText={setText}
-          placeholder={
-            cuisine === 'all'
-              ? 'Gochujang, 00 flour, masa, nước mắm…'
-              : `${INGREDIENTS[cuisine]
-                  .slice(0, 3)
-                  .map((i) => ingredientName(i, lang))
-                  .join(', ')}…`
-          }
+          placeholder="Gochujang, 00 flour, masa, nước mắm…"
           returnKeyType="search"
-          onSubmitEditing={ready ? search : undefined}
           style={{ marginTop: space.lg }}
         />
 
-        <View style={{ marginTop: space.xl }}>
-          <Label>How much</Label>
-        </View>
-
-        <View style={{ flexDirection: 'row', alignItems: 'flex-end', gap: space.lg, marginTop: space.md }}>
-          <TextInput
-            value={qty}
-            onChangeText={setQty}
-            keyboardType="decimal-pad"
-            placeholder="Any"
-            placeholderTextColor={theme.line}
-            style={{
-              flex: 1,
-              minWidth: 0,
-              borderBottomWidth: StyleSheet.hairlineWidth,
-              borderBottomColor: theme.ink,
-              paddingVertical: 6,
-              fontSize: 38,
-              fontWeight: '200',
-              color: theme.ink,
-            }}
-          />
-          <View style={{ width: 150 }}>
-            <Segmented
-              value={unit}
-              onChange={setUnit}
-              options={[
-                { value: 'kg', label: 'kg' },
-                { value: 'lb', label: 'lb' },
-                { value: 'case', label: 'case' },
-              ]}
-            />
+        {livesNow.length ? (
+          <View style={{ marginTop: space.lg, gap: space.sm }}>
+            <Label>Live now</Label>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 6 }}>
+              {livesNow.map((l) => (
+                <Pressable
+                  key={l.id}
+                  onPress={() => router.push(`/live/${l.id}`)}
+                  style={{ flexDirection: 'row', alignItems: 'center', gap: 6, paddingVertical: 7, paddingHorizontal: 10, backgroundColor: theme.ink }}
+                >
+                  <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: '#e5484d' }} />
+                  <T size={10} weight="500" color="#fff" style={{ letterSpacing: track.label, textTransform: 'uppercase' }}>
+                    {userById(l.sellerId)?.name || 'Seller'}
+                    {l.title ? ` · ${l.title}` : ''}
+                  </T>
+                </Pressable>
+              ))}
+            </ScrollView>
           </View>
-        </View>
-
-        {valid ? (
-          <T size={10} color={theme.muted} style={{ letterSpacing: track.label, marginTop: space.md }}>
-            {unit === 'case'
-              ? `${value} ${value === 1 ? 'CASE' : 'CASES'}`
-              : `${weightParts(qtyKg).kg} / ${weightParts(qtyKg).lb}`}
-          </T>
         ) : null}
 
-        <Btn title="Find" onPress={search} disabled={!ready} style={{ marginTop: space.xl }} />
+        <Row style={{ marginTop: space.xl, marginBottom: space.sm, justifyContent: 'space-between' }}>
+          <Pressable onPress={() => setPicked(new Set())} hitSlop={8}>
+            <T
+              size={10}
+              weight={picked.size ? '400' : '600'}
+              color={picked.size ? theme.muted : theme.ink}
+              style={{ letterSpacing: track.label, textTransform: 'uppercase' }}
+            >
+              All cuisines
+            </T>
+          </Pressable>
+          {picked.size ? (
+            <Pressable onPress={() => setPicked(new Set())} hitSlop={8}>
+              <T size={10} color={theme.muted} style={{ letterSpacing: track.label, textTransform: 'uppercase' }}>
+                Clear {picked.size}
+              </T>
+            </Pressable>
+          ) : null}
+        </Row>
+
+        <TagTree selected={picked} onToggle={toggle} />
+
+        <View style={{ borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: theme.lineSoft }}>
+          <Pressable
+            onPress={() => setAmountOpen((v) => !v)}
+            style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 12 }}
+          >
+            <T size={11.5} weight={amount ? '600' : '500'} style={{ letterSpacing: track.label, textTransform: 'uppercase' }}>
+              Amount
+              {amount ? ` · ${unit === 'case' ? `${amount} ${amount === 1 ? 'box' : 'boxes'}` : `${weightParts(toKg(amount, unit)).kg} / ${weightParts(toKg(amount, unit)).lb}`}` : ''}
+            </T>
+            <T size={16} weight="300" color={theme.muted} style={{ transform: [{ rotate: amountOpen ? '90deg' : '0deg' }] }}>
+              ›
+            </T>
+          </Pressable>
+          {amountOpen ? (
+            <View style={{ flexDirection: 'row', alignItems: 'flex-end', gap: space.lg, paddingBottom: space.lg }}>
+              <TextInput
+                value={qty}
+                onChangeText={setQty}
+                keyboardType="decimal-pad"
+                placeholder="Any"
+                placeholderTextColor={theme.line}
+                style={{
+                  flex: 1,
+                  minWidth: 0,
+                  borderBottomWidth: StyleSheet.hairlineWidth,
+                  borderBottomColor: theme.ink,
+                  paddingVertical: 6,
+                  fontSize: 30,
+                  fontWeight: '200',
+                  color: theme.ink,
+                }}
+              />
+              <View style={{ width: 150 }}>
+                <Segmented
+                  value={unit}
+                  onChange={setUnit}
+                  options={[
+                    { value: 'kg', label: 'kg' },
+                    { value: 'lb', label: 'lb' },
+                    { value: 'case', label: 'box' },
+                  ]}
+                />
+              </View>
+            </View>
+          ) : null}
+        </View>
+
+        <Row style={{ marginTop: space.md, marginBottom: space.lg, justifyContent: 'space-between' }}>
+          <Chip label="US stock only" selected={usOnly} onPress={() => setUsOnly((v) => !v)} />
+          <T size={10} color={theme.muted} style={{ letterSpacing: track.label, textTransform: 'uppercase' }}>
+            {shown.length} {shown.length === 1 ? 'listing' : 'listings'}
+          </T>
+        </Row>
+
+        <ListingGrid posts={shown} />
       </ScrollView>
     </KeyboardAvoidingView>
   );

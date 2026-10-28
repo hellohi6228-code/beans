@@ -2,22 +2,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import type { RealtimeChannel } from '@supabase/supabase-js';
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { ensureSession, supabase } from './lib/supabase';
-import { Category, Cuisine, Message, Post, Report, SupplierType, Thread, User } from './types';
-import { Unit } from './units';
-
-/** What the front page asks. All of it is optional. */
-export type SourcingRequest = {
-  text: string;
-  category: Category | 'all';
-  cuisine: Cuisine | 'all';
-  /** One of that kitchen's ingredient tags, by its English name. */
-  ingredient?: string;
-  /** 0 means any amount. */
-  qty: number;
-  unit: Unit | 'case';
-  /** The amount in kg when asked by weight; 0 when asked in cases. */
-  qtyKg: number;
-};
+import { Live, Message, Origin, Post, Report, SupplierType, Thread, User } from './types';
 
 type Cache = {
   users: User[];
@@ -25,10 +10,22 @@ type Cache = {
   threads: Thread[];
   messages: Message[];
   reports: Report[];
-  request: SourcingRequest | null;
+  lives: Live[];
 };
 
-const emptyCache: Cache = { users: [], posts: [], threads: [], messages: [], reports: [], request: null };
+const emptyCache: Cache = { users: [], posts: [], threads: [], messages: [], reports: [], lives: [] };
+
+const liveFromRow = (r: any): Live => ({
+  id: r.id,
+  sellerId: r.seller_id,
+  title: r.title ?? '',
+  startedAt: new Date(r.started_at).getTime(),
+  lastSeen: new Date(r.last_seen).getTime(),
+  endedAt: r.ended_at ? new Date(r.ended_at).getTime() : undefined,
+});
+
+/** On air: not ended, and the seller's page checked in within the last minute. */
+export const isOnAir = (l: Live, now = Date.now()) => !l.endedAt && now - l.lastSeen < 60_000;
 
 /** Locally remembered anonymous identities, so the demo bar can flip between
  * real backend accounts on one device without losing any of them. */
@@ -64,6 +61,7 @@ const userFromRow = (r: any): User => ({
   name: r.name ?? '',
   bio: r.bio ?? '',
   supplierType: r.supplier_type ?? undefined,
+  shipsFrom: r.ships_from ?? undefined,
   avatar: r.avatar_url ?? undefined,
   createdAt: new Date(r.created_at).getTime(),
 });
@@ -75,11 +73,13 @@ const postFromRow = (r: any): Post => ({
   caption: r.caption ?? '',
   // listing_active is null on a plain post and true/false on a listing.
   // Older listings predate the food fields, so each falls back to how every
-  // listing used to be: coffee, by weight, from US stock.
+  // listing used to be: by weight, from US stock. Newer ones carry ingredient
+  // tags instead of a category.
   listing:
     r.listing_active != null
       ? {
-          category: r.category ?? 'coffee',
+          category: r.category ?? undefined,
+          ingredients: r.ingredients ?? [],
           sellBy: r.sell_by ?? 'weight',
           pricePerKg: Number(r.price_per_kg),
           lotKg: Number(r.lot_kg),
@@ -135,18 +135,30 @@ type Ctx = {
   me: User | null;
 
   updateMe: (patch: Partial<User>) => Promise<void>;
-  /** Your own shipping address. Undefined while loading, null until onboarded. */
+  /** Your own shipping address (buyers). Undefined while loading, null if none. */
   myAddress: string | null | undefined;
-  /** Onboarding: buyer or seller, and where to ship. */
-  onboard: (input: { role: User['role']; supplierType?: SupplierType; address: string }) => Promise<void>;
+  /** Whether this account has been through onboarding. Undefined while loading. */
+  onboarded: boolean | undefined;
+  /** Onboarding: a buyer gives a shipping address; a seller what kind and where from. */
+  onboard: (
+    input:
+      | { role: 'customer'; address: string }
+      | { role: 'supplier'; supplierType: SupplierType; shipsFrom: 'us' | Origin }
+  ) => Promise<void>;
   saveAddress: (address: string) => Promise<void>;
+
+  /** Sellers on camera right now. */
+  livesNow: Live[];
+  startLive: (title: string) => Promise<Live>;
+  /** Called every few seconds while on air, so a closed tab drops off. */
+  heartbeatLive: (id: string) => Promise<void>;
+  endLive: (id: string) => Promise<void>;
 
   /** Testing only: other real backend identities remembered on this device. */
   demoAccounts: string[];
   addTestUser: () => Promise<void>;
   switchUser: (id: string) => Promise<void>;
 
-  setRequest: (r: SourcingRequest | null) => void;
 
   userById: (id: string) => User | undefined;
   postById: (id: string) => Post | undefined;
@@ -242,14 +254,21 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     setMyAddress(undefined);
 
     (async () => {
-      const [{ data: users }, { data: posts }, { data: threadRows }, { data: reportRows }, { data: addressRow }] =
-        await Promise.all([
-          supabase.from('profiles').select('*'),
-          supabase.from('posts').select('*'),
-          supabase.from('threads').select('*').contains('participants', [meId]),
-          supabase.from('reports').select('*').eq('reporter_id', meId),
-          supabase.from('addresses').select('address').eq('user_id', meId).maybeSingle(),
-        ]);
+      const [
+        { data: users },
+        { data: posts },
+        { data: threadRows },
+        { data: reportRows },
+        { data: addressRow },
+        { data: liveRows },
+      ] = await Promise.all([
+        supabase.from('profiles').select('*'),
+        supabase.from('posts').select('*'),
+        supabase.from('threads').select('*').contains('participants', [meId]),
+        supabase.from('reports').select('*').eq('reporter_id', meId),
+        supabase.from('addresses').select('address').eq('user_id', meId).maybeSingle(),
+        supabase.from('lives').select('*').is('ended_at', null),
+      ]);
       if (!alive) return;
       setMyAddress(addressRow?.address ?? null);
 
@@ -266,7 +285,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
         threads,
         messages: (messageRows ?? []).map(messageFromRow),
         reports: (reportRows ?? []).map(reportFromRow),
-        request: null,
+        lives: (liveRows ?? []).map(liveFromRow),
       });
       setHydrated(true);
     })();
@@ -325,7 +344,20 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       })
       .subscribe();
 
-    channelsRef.current = [onPosts, onProfiles, onThreads, onMessages];
+    const onLives = supabase
+      .channel('public:lives')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'lives' }, (payload) => {
+        setCache((c) => ({
+          ...c,
+          lives:
+            payload.eventType === 'DELETE'
+              ? removeById(c.lives, (payload.old as any).id)
+              : upsert(c.lives, liveFromRow(payload.new)),
+        }));
+      })
+      .subscribe();
+
+    channelsRef.current = [onPosts, onProfiles, onThreads, onMessages, onLives];
 
     return () => {
       alive = false;
@@ -335,6 +367,22 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   }, [meId]);
 
   const me = useMemo(() => cache.users.find((u) => u.id === meId) ?? null, [cache.users, meId]);
+
+  // A buyer is onboarded once they have a shipping address; a seller once
+  // they have said what kind of seller and where their goods ship from.
+  const onboarded =
+    !hydrated || !me || myAddress === undefined
+      ? undefined
+      : me.role === 'supplier'
+        ? !!me.supplierType && !!me.shipsFrom
+        : !!myAddress;
+
+  // Re-checks who is still on air as heartbeats age out.
+  const [now, setNow] = useState(Date.now());
+  useEffect(() => {
+    const t = setInterval(() => setNow(Date.now()), 15_000);
+    return () => clearInterval(t);
+  }, []);
   const userById = useCallback((id: string) => cache.users.find((u) => u.id === id), [cache.users]);
   const postById = useCallback((id: string) => cache.posts.find((p) => p.id === id), [cache.posts]);
 
@@ -364,6 +412,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       if ('avatar' in patch) row.avatar_url = patch.avatar ?? null;
       if (patch.role !== undefined) row.role = patch.role;
       if ('supplierType' in patch) row.supplier_type = patch.supplierType ?? null;
+      if ('shipsFrom' in patch) row.ships_from = patch.shipsFrom ?? null;
 
       const { data, error } = await supabase.from('profiles').update(row).eq('id', meId).select().single();
       if (error) throw error;
@@ -371,6 +420,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     },
 
     myAddress,
+    onboarded,
 
     saveAddress: async (address) => {
       if (!meId) return;
@@ -383,23 +433,58 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       setMyAddress(clean);
     },
 
-    onboard: async ({ role, supplierType, address }) => {
+    onboard: async (input) => {
       if (!meId) return;
-      const clean = address.trim();
-      if (!clean) throw new Error('Add a shipping address.');
-      const { error: addressError } = await supabase
-        .from('addresses')
-        .upsert({ user_id: meId, address: clean, updated_at: new Date().toISOString() });
-      if (addressError) throw addressError;
+      if (input.role === 'customer') {
+        const clean = input.address.trim();
+        if (!clean) throw new Error('Add a shipping address.');
+        const { error: addressError } = await supabase
+          .from('addresses')
+          .upsert({ user_id: meId, address: clean, updated_at: new Date().toISOString() });
+        if (addressError) throw addressError;
+        setMyAddress(clean);
+      }
       const { data, error } = await supabase
         .from('profiles')
-        .update({ role, supplier_type: role === 'supplier' ? supplierType : null })
+        .update(
+          input.role === 'supplier'
+            ? { role: 'supplier', supplier_type: input.supplierType, ships_from: input.shipsFrom }
+            : { role: 'customer', supplier_type: null, ships_from: null }
+        )
         .eq('id', meId)
         .select()
         .single();
       if (error) throw error;
       setCache((c) => ({ ...c, users: upsert(c.users, userFromRow(data)) }));
-      setMyAddress(clean);
+    },
+
+    livesNow: cache.lives.filter((l) => isOnAir(l, now)),
+
+    startLive: async (title) => {
+      if (!meId) throw new Error('Not signed in.');
+      const { data, error } = await supabase
+        .from('lives')
+        .insert({ seller_id: meId, title: title.trim() })
+        .select()
+        .single();
+      if (error) throw error;
+      const live = liveFromRow(data);
+      setCache((c) => ({ ...c, lives: upsert(c.lives, live) }));
+      return live;
+    },
+
+    heartbeatLive: async (id) => {
+      await supabase.from('lives').update({ last_seen: new Date().toISOString() }).eq('id', id);
+    },
+
+    endLive: async (id) => {
+      const { data } = await supabase
+        .from('lives')
+        .update({ ended_at: new Date().toISOString() })
+        .eq('id', id)
+        .select()
+        .single();
+      if (data) setCache((c) => ({ ...c, lives: upsert(c.lives, liveFromRow(data)) }));
     },
 
     addTestUser: async () => {
@@ -418,7 +503,6 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       if (error) throw error;
     },
 
-    setRequest: (request) => setCache((c) => ({ ...c, request })),
 
     userById,
     postById,
@@ -443,7 +527,8 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
         listing_active: l ? l.active : null,
         ...(l
           ? {
-              category: l.category,
+              category: l.category ?? null,
+              ingredients: l.ingredients,
               sell_by: l.sellBy,
               price_per_case: l.pricePerCase ?? null,
               units_per_case: l.unitsPerCase ?? null,

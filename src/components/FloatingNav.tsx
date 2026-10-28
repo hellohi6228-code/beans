@@ -26,11 +26,12 @@ export function FloatingNav() {
   // screen, so the menu opens downward instead of running off the top edge.
   const [expandDown, setExpandDown] = useState(START_Y < H / 2);
 
-  // Listing only exists for accounts that are currently supplying.
+  // Buyers find; sellers go live and manage their listings.
+  const seller = me?.role === 'supplier';
   const items: Item[] = [
-    { label: 'Find', href: '/home' },
+    seller ? { label: 'Live', href: '/live', coach: true } : { label: 'Find', href: '/home' },
     { label: 'Post', href: '/new-post', coach: true },
-    ...(me?.role === 'supplier' ? [{ label: 'Listing', href: '/listings', coach: true }] : []),
+    ...(seller ? [{ label: 'Listing', href: '/listings', coach: true }] : []),
     { label: 'Messages', href: '/messages' },
     { label: 'Profile', href: '/profile' },
   ];
@@ -148,7 +149,7 @@ export function FloatingNav() {
                 }}
               >
                 <T size={12} weight="400" color={theme.inkSoft} style={{ lineHeight: 18 }}>
-                  This is where you post and manage what you sell.
+                  Go live to show buyers your goods. Post and Listing are where you list and manage what you sell.
                 </T>
                 <Pressable onPress={closeMenu} hitSlop={8}>
                   <T

@@ -9,7 +9,7 @@ import { space, theme, track } from '../../src/theme';
 import {
   allergenLine,
   availableLine,
-  categoryLabel,
+  whatLine,
   dutiesLine,
   minLine,
   packLine,
@@ -25,7 +25,7 @@ export default function PostDetail() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const { postById, userById, messageAbout, removePost, toggleListing, addReport, reportedByMe, me } = useStore();
+  const { postById, userById, messageAbout, removePost, toggleListing, addReport, reportedByMe, me, livesNow } = useStore();
   const { lang } = useLang();
 
   const [asking, setAsking] = useState(false);
@@ -41,6 +41,7 @@ export default function PostDetail() {
 
   // A listing that is switched off cannot be messaged about.
   const canMessage = !!me && !mine && (!listing || live);
+  const sellerLive = livesNow.find((l) => l.sellerId === post.userId);
 
   return (
     <>
@@ -62,7 +63,7 @@ export default function PostDetail() {
 
           {listing ? (
             <View style={{ marginTop: space.lg }}>
-              <Label>{categoryLabel(listing, lang)}</Label>
+              <Label>{whatLine(listing, lang)}</Label>
 
               <Row style={{ gap: space.sm, alignItems: 'baseline', marginTop: space.sm }}>
                 <T size={19} weight="400">
@@ -147,6 +148,15 @@ export default function PostDetail() {
             </Pressable>
             <Rule />
           </View>
+
+          {sellerLive && !mine ? (
+            <Btn
+              title="Watch live"
+              kind="outline"
+              onPress={() => router.push(`/live/${sellerLive.id}`)}
+              style={{ marginTop: space.lg }}
+            />
+          ) : null}
 
           {canMessage ? (
             <Btn

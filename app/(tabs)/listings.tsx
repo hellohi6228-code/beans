@@ -7,7 +7,7 @@ import { Empty, Photo, Rule, T } from '../../src/components/ui';
 import { useStore } from '../../src/store';
 import { space, theme, track } from '../../src/theme';
 import { useLang } from '../../src/i18n';
-import { availableLine, categoryLabel, priceLines } from '../../src/listing';
+import { availableLine, whatLine, priceLines } from '../../src/listing';
 
 /** Every item this account is selling, one row each, with its on/off switch. */
 export default function Listings() {
@@ -58,7 +58,7 @@ export default function Listings() {
                           {priceLines(l, lang).main} · {priceLines(l, lang).sub}
                         </T>
                         <T size={9.5} color={theme.muted} style={{ letterSpacing: track.label }}>
-                          {categoryLabel(l, lang)} · {availableLine(l, lang)}
+                          {whatLine(l, lang)} · {availableLine(l, lang)}
                         </T>
                       </View>
                     </Pressable>

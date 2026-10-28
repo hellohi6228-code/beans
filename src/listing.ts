@@ -1,4 +1,5 @@
-import { Lang, categoryName, en, line, words } from './i18n';
+import { Lang, categoryName, cuisineName, en, line, words } from './i18n';
+import { tagById, tagName } from './tags';
 import { ListingPart } from './types';
 import { money, priceParts, smallWeightParts, weightParts } from './units';
 
@@ -14,18 +15,18 @@ export function priceLines(l: ListingPart, lang: Lang): { main: string; sub: str
   const p = priceParts(l.pricePerKg);
   if (l.sellBy === 'case' && l.pricePerCase) {
     const w = words(lang);
-    return { main: `${money(l.pricePerCase)} / case${w ? ` ${w.perCase}` : ''}`, sub: `${p.perKg} · ${p.perLb}` };
+    return { main: `${money(l.pricePerCase)} / box${w ? ` ${w.perCase}` : ''}`, sub: `${p.perKg} · ${p.perLb}` };
   }
   return { main: p.perKg, sub: p.perLb };
 }
 
-/** "24 × 200 g / 7.05 oz · 4.8 kg / 10.58 lb a case", or null for weight listings. */
+/** "24 × 200 g / 7.05 oz · 4.8 kg / 10.58 lb a box", or null for weight listings. */
 export function packLine(l: ListingPart, lang: Lang): string | null {
   if (l.sellBy !== 'case' || !l.unitsPerCase || !l.unitKg) return null;
   const unit = smallWeightParts(l.unitKg);
   const total = weightParts(caseKg(l));
   return line(
-    `${l.unitsPerCase} × ${unit.g} / ${unit.oz} · ${total.kg} / ${total.lb} a case`,
+    `${l.unitsPerCase} × ${unit.g} / ${unit.oz} · ${total.kg} / ${total.lb} a box`,
     words(lang)?.pack(l.unitsPerCase, unit.g.replace(' ', ''))
   );
 }
@@ -77,4 +78,10 @@ export function allergenLine(l: ListingPart, lang: Lang): string {
 
 export const dutiesLine = (lang: Lang) => [en.duties, words(lang)?.duties].filter(Boolean).join(' ');
 
-export const categoryLabel = (l: ListingPart, lang: Lang) => categoryName(l.category, lang);
+/** What it is: its ingredient tags, else its cuisines, else (older listings) its category. */
+export function whatLine(l: ListingPart, lang: Lang): string {
+  const tags = l.ingredients.map((id) => tagById(id)).filter((t) => !!t);
+  if (tags.length) return tags.map((t) => tagName(t!, lang)).join(' · ');
+  if (l.cuisines.length) return l.cuisines.map((c) => cuisineName(c, lang)).join(' · ');
+  return l.category ? categoryName(l.category, lang) : '';
+}
