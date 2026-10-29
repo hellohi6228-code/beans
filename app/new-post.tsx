@@ -1,5 +1,5 @@
 import { useRouter } from 'expo-router';
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Alert, KeyboardAvoidingView, Platform, ScrollView, View } from 'react-native';
 import { Header } from '../src/components/Header';
 import { PhotoPicker } from '../src/components/PhotoPicker';
@@ -59,6 +59,16 @@ export default function NewPost() {
   const [englishLabel, setEnglishLabel] = useState(false);
   const [allergens, setAllergens] = useState<Allergen[]>([]);
   const [busy, setBusy] = useState(false);
+
+  // Opened straight from a link, the account loads after the first render, so
+  // the seller defaults are applied once it arrives.
+  const defaulted = useRef(false);
+  useEffect(() => {
+    if (!me || defaulted.current) return;
+    defaulted.current = true;
+    if (me.role === 'supplier') setSelling(true);
+    if (me.shipsFrom) setShipsFrom(me.shipsFrom);
+  }, [me]);
 
   // Unit sizes are small, so a kg seller types grams and a lb seller ounces.
   const unitKg = unit === 'kg' ? gToKg(n(unitSize)) : ozToKg(n(unitSize));
@@ -124,7 +134,10 @@ export default function NewPost() {
 
       const uploaded = await uploadPhotos(photos, me.id);
       await addPost({ photos: uploaded, caption: caption.trim(), listing });
-      router.back();
+      // Opened from a link there is nothing to go back to, and staying here
+      // invites posting the same thing twice.
+      if (router.canGoBack()) router.back();
+      else router.replace(me.role === 'supplier' ? '/listings' : '/home');
     } catch (err: any) {
       Alert.alert('Could not post', err?.message ?? 'Something went wrong. Try again.');
     } finally {
